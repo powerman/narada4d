@@ -58,9 +58,10 @@ should be compatible and keep your data safe.
   Tools/libraries should return error for unsupported protocols.
     - *Rationale:* This is convenient and flexible way to configure
       application, libraries and tools in one place.
-- Environment variable `$NARADA4D_SKIP_LOCK` must be set to `1` when
-  exclusive lock was acquired, and if it's set then next attempt to
-  acquire and then release shared or exclusive lock shouldn't do anything.
+- Environment variable `$NARADA4D_SKIP_LOCK` must be set to non-empty
+  string when exclusive lock was acquired, and if it's set then next
+  attempt to acquire and then release shared or exclusive lock shouldn't
+  do anything.
     - *Rationale:* Needed to support recursive locking, needed in case
       when one tool (migrate) runs other tools (backup or restore).
 - Version of data schema must be a string which is either `none` or
