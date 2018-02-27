@@ -7,7 +7,6 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"sync"
 	"syscall"
 
 	"github.com/powerman/narada4d/schemaver"
@@ -21,16 +20,11 @@ const (
 )
 
 func init() {
-	schemaver.RegisterProtocol(proto, initialize, new)
+	schemaver.RegisterProtocol(proto, schemaver.Backend{
+		Initialize: initialize,
+		New:        new,
+	})
 }
-
-type lockType int
-
-const (
-	unlocked lockType = iota
-	shared
-	exclusive
-)
 
 type schemaVer struct {
 	versionPath   string
@@ -40,9 +34,6 @@ type schemaVer struct {
 	lockQueueFile *os.File
 	lockFD        int
 	lockQueueFD   int
-	mu            sync.Mutex
-	lockType      lockType
-	skipUnlock    int
 }
 
 func parse(loc *url.URL) (*schemaVer, error) {
@@ -79,7 +70,7 @@ func initialize(loc *url.URL) error {
 	return err
 }
 
-func new(loc *url.URL) (schemaver.SchemaVer, error) {
+func new(loc *url.URL) (schemaver.Manage, error) {
 	v, err := parse(loc)
 	if err != nil {
 		return nil, err
@@ -99,9 +90,6 @@ func new(loc *url.URL) (schemaver.SchemaVer, error) {
 	v.lockFD = int(v.lockFile.Fd())
 	v.lockQueueFD = int(v.lockQueueFile.Fd())
 
-	if os.Getenv(schemaver.EnvSkipLock) != "" {
-		v.lockType = exclusive
-	}
 	return v, nil
 }
 
@@ -110,90 +98,47 @@ func (v *schemaVer) initialized() bool {
 	return err == nil && fi.Mode()&os.ModeSymlink != 0
 }
 
-// SharedLock acquire shared lock and return current version.
-func (v *schemaVer) SharedLock() string {
-	return v.lock(shared)
+// SharedLock implements schemaver.Backend interface.
+func (v *schemaVer) SharedLock() {
+	v.lock(syscall.LOCK_SH)
 }
 
-// ExclusiveLock acquire exclusive lock and return current version.
-func (v *schemaVer) ExclusiveLock() string {
-	return v.lock(exclusive)
+// ExclusiveLock implements schemaver.Backend interface.
+func (v *schemaVer) ExclusiveLock() {
+	v.lock(syscall.LOCK_EX)
 }
 
-func (v *schemaVer) lock(typ lockType) string {
-	v.mu.Lock()
-	defer v.mu.Unlock()
-
-	switch v.lockType {
-	case exclusive:
-		v.skipUnlock++
-	case shared:
-		if typ == exclusive {
-			panic("unable to acquire exclusive lock under shared lock")
-		}
-		v.skipUnlock++
-	default:
-		if err := syscall.Flock(v.lockQueueFD, syscall.LOCK_EX); err != nil {
-			panic(err)
-		}
-		how := syscall.LOCK_EX
-		if typ == shared {
-			how = syscall.LOCK_SH
-		}
-		if err := syscall.Flock(v.lockFD, how); err != nil {
-			panic(err)
-		}
-		if err := syscall.Flock(v.lockQueueFD, syscall.LOCK_UN); err != nil {
-			panic(err)
-		}
-		if typ == exclusive {
-			if err := os.Setenv(schemaver.EnvSkipLock, "1"); err != nil {
-				panic(err)
-			}
-		}
-		v.lockType = typ
+func (v *schemaVer) lock(how int) {
+	if err := syscall.Flock(v.lockQueueFD, syscall.LOCK_EX); err != nil {
+		panic(err)
 	}
-
-	return v.get()
+	if err := syscall.Flock(v.lockFD, how); err != nil {
+		panic(err)
+	}
+	if err := syscall.Flock(v.lockQueueFD, syscall.LOCK_UN); err != nil {
+		panic(err)
+	}
 }
 
-// Unlock release lock acquired using SharedLock or ExclusiveLock.
+// Unlock implements schemaver.Backend interface.
 func (v *schemaVer) Unlock() {
-	v.mu.Lock()
-	defer v.mu.Unlock()
-
-	if v.skipUnlock > 0 {
-		v.skipUnlock--
-		return
-	}
-
 	if err := syscall.Flock(v.lockFD, syscall.LOCK_UN); err != nil {
 		panic(err)
 	}
-	if err := os.Unsetenv(schemaver.EnvSkipLock); err != nil {
-		panic(err)
-	}
-	v.lockType = unlocked
 }
 
-// Set change current version. It must be called under ExclusiveLock.
-func (v *schemaVer) Set(ver string) {
-	v.mu.Lock()
-	defer v.mu.Unlock()
-
-	if v.lockType != exclusive {
-		panic("exclusive lock required")
-	}
-
-	if err := os.Symlink(ver, v.lockPath); err != nil {
-		panic(err)
-	}
-}
-
-func (v *schemaVer) get() string {
+// Get implements schemaver.Backend interface.
+func (v *schemaVer) Get() string {
 	ver, err := os.Readlink(v.versionPath)
 	if err != nil {
 		panic(err)
 	}
 	return ver
+}
+
+// Set implements schemaver.Backend interface.
+func (v *schemaVer) Set(ver string) {
+	if err := os.Symlink(ver, v.lockPath); err != nil {
+		panic(err)
+	}
 }
