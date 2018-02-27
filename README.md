@@ -167,9 +167,18 @@ Managing data schema versions requires:
       and then release and immediately re-acquire it every second,
       delaying data access meanwhile.
 
-## mysql:///database
+## mysql://user[:pass]@host[:port]/database
 
-**TODO:** Define protocol to manage data schema version stored in separate
-table in MySQL-compatible database, using MySQL locks.
+- Version is stored in table named `Narada4D`, in a row `var="version"`.
+- Neither table nor this row is never deleted.
+- To initialize: `CREATE TABLE Narada4D (var
+  VARCHAR(255) PRIMARY KEY, val VARCHAR(255) NOT NULL) SELECT "version" as
+  var, "none" as val`.
+- To check is it initialized: `SELECT COUNT(*) FROM Narada4D`.
+- To set shared lock: `LOCK TABLE Narada4D READ`.
+- To set exclusive lock: `LOCK TABLE Narada4D WRITE`.
+- To unlock: `UNLOCK TABLES`.
+- To get version: `SELECT val FROM Narada4D WHERE var='version'`.
+- To change version: `UPDATE Narada4D SET val=? WHERE var='version'`.
 
 # Tools
