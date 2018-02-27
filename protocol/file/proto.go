@@ -94,7 +94,7 @@ func new(loc *url.URL) (schemaver.Manage, error) {
 }
 
 func (v *schemaVer) initialized() bool {
-	fi, err := os.Stat(v.versionPath)
+	fi, err := os.Lstat(v.versionPath)
 	return err == nil && fi.Mode()&os.ModeSymlink != 0
 }
 
