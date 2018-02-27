@@ -56,7 +56,7 @@ func parse(loc *url.URL) (*schemaVer, error) {
 func initialize(loc *url.URL) error {
 	v, err := parse(loc)
 	if err == nil && v.initialized() {
-		err = fmt.Errorf("version already initialized at %v", loc)
+		err = fmt.Errorf("version already initialized at %s", v.versionPath)
 	}
 	if err == nil {
 		err = ioutil.WriteFile(v.lockPath, nil, 0444)
@@ -76,7 +76,7 @@ func new(loc *url.URL) (schemaver.Manage, error) {
 		return nil, err
 	}
 	if !v.initialized() {
-		return nil, fmt.Errorf("version is not initialized at %v", loc)
+		return nil, fmt.Errorf("version is not initialized at %s", v.versionPath)
 	}
 
 	v.lockFile, err = os.Open(v.lockPath)

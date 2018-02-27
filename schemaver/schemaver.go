@@ -28,7 +28,7 @@ func location() (*url.URL, error) {
 		return nil, fmt.Errorf("failed to parse $%s: %v", EnvLocation, err)
 	}
 	if registered[loc.Scheme] == nil {
-		return nil, fmt.Errorf("unknown protocol in $%s: %v", EnvLocation, loc.Scheme)
+		return nil, fmt.Errorf("unknown protocol in $%s: %q", EnvLocation, loc.Scheme)
 	}
 	return loc, nil
 }
