@@ -138,7 +138,12 @@ func (v *schemaVer) Get() string {
 
 // Set implements schemaver.Backend interface.
 func (v *schemaVer) Set(ver string) {
-	if err := os.Symlink(ver, v.lockPath); err != nil {
+	tmpPath := v.versionPath + ".tmp"
+	_ = os.Remove(tmpPath)
+	if err := os.Symlink(ver, tmpPath); err != nil {
+		panic(err)
+	}
+	if err := os.Rename(tmpPath, v.versionPath); err != nil {
 		panic(err)
 	}
 }
