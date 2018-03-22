@@ -35,7 +35,7 @@ func TestBadLocation(tt *testing.T) {
 		t.Nil(err)
 		t.Err(initialize(loc), v.wanterr, v.path)
 		_, err = new(loc)
-		t.Err(err, v.wanterr)
+		t.Err(err, v.wanterr, v.path)
 	}
 }
 
@@ -46,20 +46,17 @@ func TestInitialize(tt *testing.T) {
 	tempdir, err := ioutil.TempDir("", "gotest")
 	t.Nil(err)
 	defer func() { t.Nil(os.Remove(tempdir)) }()
-
 	t.Nil(os.Chmod(tempdir, 0555))
-
 	loc, err := url.Parse(tempdir)
 	t.Nil(err)
+
 	t.Err(initialize(loc), &os.PathError{Op: "open", Path: tempdir + "/.lock", Err: syscall.EACCES})
 
 	// {"file:///path/to/dir/with/subdir/.lock/"},
 	t.Nil(os.Chmod(tempdir, 0755))
-
 	lpath := tempdir + "/.lock"
 	t.Nil(os.Mkdir(lpath, 0755))
 
-	loc, err = url.Parse(tempdir)
 	t.Err(initialize(loc), &os.PathError{Op: "open", Path: lpath, Err: syscall.EISDIR})
 	t.Nil(os.Remove(lpath))
 
@@ -67,7 +64,6 @@ func TestInitialize(tt *testing.T) {
 	lqpath := tempdir + "/.lock.queue"
 	t.Nil(os.Mkdir(lqpath, 0755))
 
-	loc, err = url.Parse(tempdir)
 	t.Err(initialize(loc), &os.PathError{Op: "open", Path: lqpath, Err: syscall.EISDIR})
 	t.Nil(os.Remove(lqpath))
 	t.Nil(os.Remove(tempdir + "/.lock"))
@@ -76,26 +72,17 @@ func TestInitialize(tt *testing.T) {
 	vpath := tempdir + "/.version"
 	t.Nil(os.Mkdir(vpath, 0755))
 
-	loc, err = url.Parse(tempdir)
 	t.Err(initialize(loc), &os.LinkError{Op: "symlink", Old: "none", New: vpath, Err: syscall.EEXIST})
 	t.Nil(os.Remove(lpath))
 	t.Nil(os.Remove(lqpath))
 	t.Nil(os.Remove(vpath))
 
-	// {"file:///path/to/empty/dir/"}, // (success)*/
-	loc, err = url.Parse(tempdir)
+	// {"file:///path/to/empty/dir/"},  (success)
 	t.Err(initialize(loc), nil)
-	t.Nil(os.Remove(lpath))
-	t.Nil(os.Remove(lqpath))
-	t.Nil(os.Remove(vpath))
 
 	//   - repeat initialize()
-	t.Nil(initialize(loc))
 	t.Err(initialize(loc), errors.New("version already initialized at "+tempdir+"/.version"))
-	defer cleanup(t, tempdir)
-	// t.Nil(os.Remove(lpath))
-	// t.Nil(os.Remove(lqpath))
-	// t.Nil(os.Remove(vpath))
+	cleanup(t, tempdir)
 }
 
 func TestNew(tt *testing.T) {
@@ -105,17 +92,17 @@ func TestNew(tt *testing.T) {
 	tempdir, err := ioutil.TempDir("", "gotest")
 	t.Nil(err)
 	defer func() { t.Nil(os.Remove(tempdir)) }()
-
 	loc, err := url.Parse(tempdir)
 	t.Nil(err)
 	_, err = new(loc)
+
 	t.Err(err, errors.New("version is not initialized at "+tempdir+"/.version"))
 
 	//   - after initialize() (success)
 	t.Nil(initialize(loc))
 	defer cleanup(t, tempdir)
-
 	_, err = new(loc)
+
 	t.Err(err, nil)
 }
 
@@ -156,10 +143,8 @@ func TestExSequence(tt *testing.T) {
 	tempdir, err := ioutil.TempDir("", "gotest")
 	t.Nil(err)
 	defer func() { t.Nil(os.Remove(tempdir)) }()
-
 	loc, err := url.Parse("file://" + tempdir)
 	t.Nil(err)
-
 	t.Nil(initialize(loc))
 	defer cleanup(t, tempdir)
 
@@ -181,10 +166,8 @@ func TestExParallel(tt *testing.T) {
 	tempdir, err := ioutil.TempDir("", "gotest")
 	t.Nil(err)
 	defer func() { t.Nil(os.Remove(tempdir)) }()
-
 	loc, err := url.Parse("file://" + tempdir)
 	t.Nil(err)
-
 	t.Nil(initialize(loc))
 	defer cleanup(t, tempdir)
 
@@ -207,10 +190,8 @@ func TestExShParallel(tt *testing.T) {
 	tempdir, err := ioutil.TempDir("", "gotest")
 	t.Nil(err)
 	defer func() { t.Nil(os.Remove(tempdir)) }()
-
 	loc, err := url.Parse("file://" + tempdir)
 	t.Nil(err)
-
 	t.Nil(initialize(loc))
 	defer cleanup(t, tempdir)
 
@@ -219,10 +200,10 @@ func TestExShParallel(tt *testing.T) {
 	un2 := make(chan struct{})
 	go testLock("EX1", loc, un1, statusc)
 	t.Equal(<-statusc, "acquired EX1")
-	go testLock("EX2", loc, un2, statusc)
-	t.Equal(<-statusc, "blocked EX2")
+	go testLock("SH2", loc, un2, statusc)
+	t.Equal(<-statusc, "blocked SH2")
 	un1 <- struct{}{}
-	t.Equal(<-statusc, "acquired EX2")
+	t.Equal(<-statusc, "acquired SH2")
 	un2 <- struct{}{}
 }
 
@@ -233,10 +214,8 @@ func TestShParallel(tt *testing.T) {
 	tempdir, err := ioutil.TempDir("", "gotest")
 	t.Nil(err)
 	defer func() { t.Nil(os.Remove(tempdir)) }()
-
 	loc, err := url.Parse("file://" + tempdir)
 	t.Nil(err)
-
 	t.Nil(initialize(loc))
 	defer cleanup(t, tempdir)
 
@@ -258,10 +237,8 @@ func TestExPriority(tt *testing.T) {
 	tempdir, err := ioutil.TempDir("", "gotest")
 	t.Nil(err)
 	defer func() { t.Nil(os.Remove(tempdir)) }()
-
 	loc, err := url.Parse("file://" + tempdir)
 	t.Nil(err)
-
 	t.Nil(initialize(loc))
 	defer cleanup(t, tempdir)
 
@@ -289,15 +266,14 @@ func TestGetNone(tt *testing.T) {
 	tempdir, err := ioutil.TempDir("", "gotest")
 	t.Nil(err)
 	defer func() { t.Nil(os.Remove(tempdir)) }()
-
 	loc, err := url.Parse("file://" + tempdir)
 	t.Nil(err)
-
 	t.Nil(initialize(loc))
 	defer cleanup(t, tempdir)
-
-	p, err := parse(loc)
+	p, err := new(loc)
 	t.Nil(err)
+
+	t.Equal(p.Get(), "none")
 	t.Equal(p.Get(), "none")
 }
 
@@ -307,38 +283,37 @@ func TestSet(tt *testing.T) {
 	tempdir, err := ioutil.TempDir("", "gotest")
 	t.Nil(err)
 	defer func() { t.Nil(os.Remove(tempdir)) }()
-
 	loc, err := url.Parse("file://" + tempdir)
 	t.Nil(err)
-
 	t.Nil(initialize(loc))
 	defer cleanup(t, tempdir)
-
 	p, err := new(loc)
 	t.Nil(err)
 
-	// - Set("dirty"), Get = "dirty"i
-	p.Set("dirty")
-	t.Match(p.Get(), "dirty")
-
-	// - Set(""), Get = ""
+	// - Set("") panics
 	t.PanicMatch(func() { p.Set("") }, `no such file or directory`)
 
+	// - Set("dirty"), Get = "dirty"
 	// - Set(" "), Get = " "
-	p.Set(" ")
-	t.Match(p.Get(), " ")
-
 	// - Set("0"), Get = "0"
-	p.Set("0")
-	t.Match(p.Get(), "0")
-
 	// - Set("1.2.3"), Get = "1.2.3"
-	p.Set("1.2.3")
-	t.Match(p.Get(), "1.2.3")
+	cases := []struct {
+		val  string
+		want string
+	}{
+		{"dirty", "dirty"},
+		{" ", " "},
+		{"0", "0"},
+		{"1.2.3", "1.2.3"},
+	}
+
+	for _, v := range cases {
+		p.Set(v.val)
+		t.Match(p.Get(), v.want)
+	}
 }
 
 func cleanup(t *check.C, tempdir string) {
-
 	t.Nil(os.Remove(tempdir + "/.lock"))
 	t.Nil(os.Remove(tempdir + "/.lock.queue"))
 	t.Nil(os.Remove(tempdir + "/.version"))
