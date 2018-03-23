@@ -13,10 +13,6 @@ import (
 	"github.com/powerman/check"
 )
 
-//   - file://user@/
-//   - file://localhost/
-//   - file:///?a=1
-//   - file:///#a
 func TestBadLocation(tt *testing.T) {
 	t := check.T(tt)
 
@@ -42,7 +38,7 @@ func TestBadLocation(tt *testing.T) {
 func TestInitialize(tt *testing.T) {
 	t := check.T(tt)
 
-	//   - file:///path/to/read-only/dir/
+	// - file:///path/to/read-only/dir/
 	tempdir, err := ioutil.TempDir("", "gotest")
 	t.Nil(err)
 	defer func() { t.Nil(os.Remove(tempdir)) }()
@@ -52,7 +48,7 @@ func TestInitialize(tt *testing.T) {
 
 	t.Err(initialize(loc), &os.PathError{Op: "open", Path: tempdir + "/.lock", Err: syscall.EACCES})
 
-	// {"file:///path/to/dir/with/subdir/.lock/"},
+	// - file:///path/to/dir/with/subdir/.lock/
 	t.Nil(os.Chmod(tempdir, 0755))
 	lpath := tempdir + "/.lock"
 	t.Nil(os.Mkdir(lpath, 0755))
@@ -60,7 +56,7 @@ func TestInitialize(tt *testing.T) {
 	t.Err(initialize(loc), &os.PathError{Op: "open", Path: lpath, Err: syscall.EISDIR})
 	t.Nil(os.Remove(lpath))
 
-	// {"file:///path/to/dir;/with/subdir/.lock.queue/"},
+	// - file:///path/to/dir;/with/subdir/.lock.queue/
 	lqpath := tempdir + "/.lock.queue"
 	t.Nil(os.Mkdir(lqpath, 0755))
 
@@ -68,7 +64,7 @@ func TestInitialize(tt *testing.T) {
 	t.Nil(os.Remove(lqpath))
 	t.Nil(os.Remove(tempdir + "/.lock"))
 
-	// {"file:///path/to/dir/with/subdir/.version/"},
+	// - file:///path/to/dir/with/subdir/.version/
 	vpath := tempdir + "/.version"
 	t.Nil(os.Mkdir(vpath, 0755))
 
@@ -77,10 +73,10 @@ func TestInitialize(tt *testing.T) {
 	t.Nil(os.Remove(lqpath))
 	t.Nil(os.Remove(vpath))
 
-	// {"file:///path/to/empty/dir/"},  (success)
+	// - file:///path/to/empty/dir/  (success)
 	t.Err(initialize(loc), nil)
 
-	//   - repeat initialize()
+	// - repeat initialize()
 	t.Err(initialize(loc), errors.New("version already initialized at "+tempdir+"/.version"))
 	cleanup(t, tempdir)
 }
@@ -88,21 +84,20 @@ func TestInitialize(tt *testing.T) {
 func TestNew(tt *testing.T) {
 	t := check.T(tt)
 
-	//   - file:///path/to/empty/dir/
+	// - file:///path/to/empty/dir/
 	tempdir, err := ioutil.TempDir("", "gotest")
 	t.Nil(err)
 	defer func() { t.Nil(os.Remove(tempdir)) }()
 	loc, err := url.Parse(tempdir)
 	t.Nil(err)
-	_, err = new(loc)
 
+	_, err = new(loc)
 	t.Err(err, errors.New("version is not initialized at "+tempdir+"/.version"))
 
-	//   - after initialize() (success)
+	// - after initialize() (success)
 	t.Nil(initialize(loc))
 	defer cleanup(t, tempdir)
 	_, err = new(loc)
-
 	t.Err(err, nil)
 }
 
@@ -293,10 +288,6 @@ func TestSet(tt *testing.T) {
 	// - Set("") panics
 	t.PanicMatch(func() { p.Set("") }, `no such file or directory`)
 
-	// - Set("dirty"), Get = "dirty"
-	// - Set(" "), Get = " "
-	// - Set("0"), Get = "0"
-	// - Set("1.2.3"), Get = "1.2.3"
 	cases := []struct {
 		val  string
 		want string
