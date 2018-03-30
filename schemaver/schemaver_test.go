@@ -5,7 +5,7 @@ import (
 )
 
 // - test://localhost/, error
-// - test:///ready, success
+// - test://, success
 // - registered[loc.Scheme] = nil, error "unknown protocol .."
 func TestLocation(tt *testing.T) {
 
@@ -24,20 +24,20 @@ func TestNew(t *testing.T) {
 }
 
 // - SH (with backend, return version), UN (with backend)
-// - NARADA_SKIP_LOCK=1, SH (no backend), UN (no backend)
+// - NARADA_SKIP_LOCK=1, SH (no backend, return version), UN (no backend)
 func TestSharedLock(t *testing.T) {
 
 }
 
 // - EX (with backend, return version), UN (with backend)
-// - NARADA_SKIP_LOCK=1, EX (no backend), UN (no backend), NARADA_SKIP_LOCK=
+// - NARADA_SKIP_LOCK=1, EX (no backend, return version), UN (no backend)
 func TestExclusiveLock(t *testing.T) {
 
 }
 
 // - UN - panic
-// - SH (with backend), UN (with backend), UN - panic
-// - EX (with backend), UN (with backend), UN - panic
+// - SH, UN, UN - panic
+// - EX, UN, UN - panic
 func TestUnlock(t *testing.T) {
 
 }
@@ -62,7 +62,7 @@ func TestSet(t *testing.T) {
 //   - SH (no backend), SH (no backend), UN (no backend), UN (no backend)
 //   - UN (with backend)
 // - SH, EX - panic
-func TestShEx(t *testing.T) {
+func TestRecursiveLocks(t *testing.T) {
 
 }
 
