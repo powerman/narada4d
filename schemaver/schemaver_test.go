@@ -1,14 +1,13 @@
 package schemaver
 
-import "testing"
+import (
+	"testing"
+)
 
-// - file://user@/
-// - file://localhost/
-// - file://?a=1
-// - file://#a
-// - file://path/to/empty/dir/, success
+// - test://localhost/, error
+// - test://path/to/empty/dir/, success
 // - registered[loc.Scheme] = nil, error "unknown protocol .."
-func TestLocation(t *testing.T) {
+func TestLocation(tt *testing.T) {
 
 }
 
@@ -24,20 +23,13 @@ func TestNew(t *testing.T) {
 
 }
 
-// - lockType != unlocked, !SharedLock
-// - recursive lock, unlock one time
-// - Get(version)
-// - callback(version)
-// - SH, EX - panic
+// - SH(with backend), Get(version), UN(with backend)
 func TestSharedLock(t *testing.T) {
 
 }
 
-//- lockType = exclusive, !ExclusiveLock
-// - recursive lock, unlock one time
-// - Get(version)
-// - callback(version)
-// - "NARADA_SKIP_LOCK", !SharedLock, !ExclusiveLock, "NARADA_SKIP_LOCK" = ""
+// - EX(with backend), Get(version), Set(version), UN(with backend)
+// - "NARADA_SKIP_LOCK"=1, EX(no backend), UN(no backend), "NARADA_SKIP_LOCK"=""
 func TestExclusiveLock(t *testing.T) {
 
 }
@@ -50,8 +42,33 @@ func TestGet(t *testing.T) {
 }
 
 // - Set() (lockType!= exclusive), panic
-// - Set() (lockType==shared), success
+// - Set() (lockType==shared), panic
 // - Set() (lockType==exclusive), success
 func TestSet(t *testing.T) {
+
+}
+
+// - "NARADA_SKIP_LOCK"=1, SH(no backend), UN(no backend)
+// - SH(with backend), SH(no backend), SH(no backend), UN(with backend)
+// - EX(with backend), SH(no backend), UN(no backend), UN(with backend)
+// - SH(with backend)
+//   - SH(no backend), UN(no backend)
+//   - SH(no backend), SH(no backend), UN(no backend), UN(no backend)
+//   - UN(with backend)
+// - SH, EX - panic
+// - UN(with backend) - panic
+// - SH(with backend), UN(with backend), UN(with backend) - panic
+// - EX(with backend), UN(with backend), UN(with backend) - panic
+func TestShEx(t *testing.T) {
+
+}
+
+// - Unlock, callback(version), os.Exit()
+// - SH(with backend), Get(callback), UN(with backend)
+// - SH(with backend), Get(callback), SH(no backend), Get(callback), UN(no backend), UN(with backend)
+// - AddCallback(0,1,2)
+//   - SH/EX(with backend), callback(0,1,2) UN(with backend)
+// - callback - panic, unlock
+func TestCallback(t *testing.T) {
 
 }
