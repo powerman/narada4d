@@ -26,18 +26,16 @@ func TestRegisterProtocol(tt *testing.T) {
 			New:        mockNew,
 			Initialize: mockInitialize,
 		})
-	}, `protocol \"test\" already registered`)
+	}, `protocol "test" already registered`)
 
 	// - registered[new://], beckend.New == nil, panic ("can't register protocol with nil implementation")
 	t.PanicMatch(func() {
-		schemaver.RegisterProtocol("new", schemaver.Backend{
-			Initialize: mockInitialize})
-	}, `can't register protocol \"new\" with nil implementation`)
+		schemaver.RegisterProtocol("new", schemaver.Backend{Initialize: mockInitialize})
+	}, `can't register protocol "new" with nil implementation`)
 	// - registered[new://], backend.Initialize == nil, panic ("can't register protocol with nil implementation")
 	t.PanicMatch(func() {
-		schemaver.RegisterProtocol("new", schemaver.Backend{
-			New: mockNew})
-	}, `can't register protocol \"new\" with nil implementation`)
+		schemaver.RegisterProtocol("new", schemaver.Backend{New: mockNew})
+	}, `can't register protocol "new" with nil implementation`)
 }
 
 func TestLocation(tt *testing.T) {
@@ -58,9 +56,9 @@ func TestLocation(tt *testing.T) {
 
 	// - registered[loc.Scheme] = nil, error "unknown protocol .."
 	os.Setenv(schemaver.EnvLocation, "new://")
-	t.Err(schemaver.Initialize(), errors.New("unknown protocol in $NARADA4D: \"new\""))
+	t.Err(schemaver.Initialize(), errors.New(`unknown protocol in $NARADA4D: "new"`))
 	_, err = schemaver.New()
-	t.Err(err, errors.New("unknown protocol in $NARADA4D: \"new\""))
+	t.Err(err, errors.New(`unknown protocol in $NARADA4D: "new"`))
 }
 
 func TestInitialize(tt *testing.T) {
@@ -91,6 +89,8 @@ func TestNew(tt *testing.T) {
 	t.Equal(err, nil)
 }
 
+// - SH/EX (with backend, return version), UN (with backend)
+// - NARADA_SKIP_LOCK=1, SH/EX (no backend, return version), UN (no backend)
 func TestShExLock(tt *testing.T) {
 	t := check.T(tt)
 	reset()
@@ -106,8 +106,6 @@ func TestShExLock(tt *testing.T) {
 		{true, "anything", false},
 	}
 
-	// - SH (with backend, return version), UN (with backend)
-	// - NARADA_SKIP_LOCK=1, SH (no backend, return version), UN (no backend)
 	for _, c := range cases {
 		if c.setEnv {
 			os.Setenv(schemaver.EnvSkipLock, c.envValue)
@@ -117,40 +115,22 @@ func TestShExLock(tt *testing.T) {
 		v, err := schemaver.New()
 		t.Nil(err)
 
-		old := sh
-		oldun := un
-		t.Equal(v.SharedLock(), "42")
-		v.Unlock()
-		if c.wantBackend {
-			t.Equal(sh, old+1, "set=%v val=%q", c.setEnv, c.envValue)
-			t.Equal(un, oldun+1)
-		} else {
-			t.Equal(sh, old, "set=%v val=%q", c.setEnv, c.envValue)
-			t.Equal(un, oldun)
-		}
-	}
-
-	// - EX (with backend, return version), UN (with backend)
-	// - NARADA_SKIP_LOCK=1, EX (no backend, return version), UN (no backend)
-	for _, c := range cases {
-		if c.setEnv {
-			os.Setenv(schemaver.EnvSkipLock, c.envValue)
-		} else {
-			os.Unsetenv(schemaver.EnvSkipLock)
-		}
-		v, err := schemaver.New()
-		t.Nil(err)
-
-		old := ex
-		oldun := un
-		t.Equal(v.ExclusiveLock(), "42")
-		v.Unlock()
-		if c.wantBackend {
-			t.Equal(ex, old+1, "set=%v val=%q", c.setEnv, c.envValue)
-			t.Equal(un, oldun+1)
-		} else {
-			t.Equal(ex, old, "set=%v val=%q", c.setEnv, c.envValue)
-			t.Equal(un, oldun)
+		for _, counter := range []*int{&sh, &ex} {
+			old := *counter
+			oldun := un
+			if counter == &sh {
+				t.Equal(v.SharedLock(), "42")
+			} else {
+				t.Equal(v.ExclusiveLock(), "42")
+			}
+			v.Unlock()
+			if c.wantBackend {
+				t.Equal(*counter, old+1, "set=%v val=%q", c.setEnv, c.envValue)
+				t.Equal(un, oldun+1)
+			} else {
+				t.Equal(*counter, old, "set=%v val=%q", c.setEnv, c.envValue)
+				t.Equal(un, oldun)
+			}
 		}
 	}
 }
@@ -296,26 +276,38 @@ func TestAddCallback(tt *testing.T) {
 	//   - NARADA_SKIP_LOCK=, EX, callback(1,2), UN
 	//   - NARADA_SKIP_LOCK=1, SH, callback(1,2), UN
 	//   - NARADA_SKIP_LOCK=1, EX, callback(1,2), UN
-	reset()
-	cb2 := func(string) { call2++ }
-	v.AddCallback(cb2)
-	v.SharedLock()
-	t.Equal(call1, 1)
-	t.Equal(call2, 1)
-	v.Unlock()
-	v.ExclusiveLock()
-	t.Equal(call1, 2)
-	t.Equal(call2, 2)
-	v.Unlock()
-	os.Setenv(schemaver.EnvSkipLock, "1")
-	v.SharedLock()
-	t.Equal(call1, 3)
-	t.Equal(call2, 3)
-	v.Unlock()
-	v.ExclusiveLock()
-	t.Equal(call1, 4)
-	t.Equal(call2, 4)
-	v.Unlock()
+	for _, cb2 := range []func(string){nil, func(string) { call2++ }} {
+		for _, skipLock := range []bool{false, true} {
+			v, err := schemaver.New()
+			t.Nil(err)
+			reset()
+			v.AddCallback(cb1)
+			if cb2 != nil {
+				v.AddCallback(cb2)
+			}
+			if skipLock {
+				os.Setenv(schemaver.EnvSkipLock, "1")
+			} else {
+				os.Unsetenv(schemaver.EnvSkipLock)
+			}
+			v.SharedLock()
+			t.Equal(call1, 1)
+			if cb2 == nil {
+				t.Equal(call2, 0)
+			} else {
+				t.Equal(call2, 1)
+			}
+			v.Unlock()
+			v.ExclusiveLock()
+			t.Equal(call1, 2)
+			if cb2 == nil {
+				t.Equal(call2, 0)
+			} else {
+				t.Equal(call2, 2)
+			}
+			v.Unlock()
+		}
+	}
 
 	// - SH/EX, callback - panic, UN   !!! TODO
 	reset()
