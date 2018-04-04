@@ -143,6 +143,9 @@ func (v *SchemaVer) Unlock() {
 	v.mu.Lock()
 	defer v.mu.Unlock()
 
+	if v.lockType == unlocked {
+		panic("can't unlock, no lock acquired")
+	}
 	if v.skipUnlock > 0 {
 		v.skipUnlock--
 	} else {
@@ -189,6 +192,10 @@ func (v *SchemaVer) Set(ver string) {
 func (v *SchemaVer) AddCallback(callback func(string)) {
 	v.mu.Lock()
 	defer v.mu.Unlock()
+
+	if callback == nil {
+		panic("require callback")
+	}
 
 	v.callbacks = append(v.callbacks, callback)
 }
