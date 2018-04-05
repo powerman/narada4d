@@ -20,7 +20,7 @@ func init() {
 func TestRegisterProtocol(tt *testing.T) {
 	t := check.T(tt)
 
-	// - registered[file://], panic ("protocol already registered")
+	// - register already registered protocol, panic
 	t.PanicMatch(func() {
 		schemaver.RegisterProtocol("test", schemaver.Backend{
 			New:        mockNew,
@@ -28,11 +28,11 @@ func TestRegisterProtocol(tt *testing.T) {
 		})
 	}, `protocol "test" already registered`)
 
-	// - registered[new://], beckend.New == nil, panic ("can't register protocol with nil implementation")
+	// - RegisterProtocol(Backend{New == nil}), panic
 	t.PanicMatch(func() {
 		schemaver.RegisterProtocol("new", schemaver.Backend{Initialize: mockInitialize})
 	}, `can't register protocol "new" with nil implementation`)
-	// - registered[new://], backend.Initialize == nil, panic ("can't register protocol with nil implementation")
+	// - RegisterProtocol(Backend{Initialize == nil}), panic
 	t.PanicMatch(func() {
 		schemaver.RegisterProtocol("new", schemaver.Backend{New: mockNew})
 	}, `can't register protocol "new" with nil implementation`)
@@ -46,19 +46,19 @@ func TestLocation(tt *testing.T) {
 	os.Setenv(schemaver.EnvLocation, "test://localhost/")
 	t.Err(schemaver.Initialize(), errBadLocation)
 	_, err := schemaver.New()
-	t.Err(err, errors.New("location must not contain host"))
+	t.Err(err, errBadLocation)
 
 	// - test://, success
 	os.Setenv(schemaver.EnvLocation, "test://")
 	t.Equal(schemaver.Initialize(), nil)
 	_, err = schemaver.New()
-	t.Equal(err, nil)
+	t.Nil(err)
 
-	// - registered[loc.Scheme] = nil, error "unknown protocol .."
+	// - registered[loc.Scheme] = nil, error
 	os.Setenv(schemaver.EnvLocation, "new://")
-	t.Err(schemaver.Initialize(), errors.New(`unknown protocol in $NARADA4D: "new"`))
+	t.Match(schemaver.Initialize(), `unknown protocol .* "new"`)
 	_, err = schemaver.New()
-	t.Err(err, errors.New(`unknown protocol in $NARADA4D: "new"`))
+	t.Match(err, `unknown protocol .* "new"`)
 }
 
 func TestInitialize(tt *testing.T) {
@@ -198,7 +198,6 @@ func TestSet(tt *testing.T) {
 	// - Set() (lockType==exclusive), success
 	v.ExclusiveLock()
 	v.Set("13")
-	t.Match(v.Get(), "13")
 	v.Unlock()
 }
 
@@ -263,6 +262,7 @@ func TestAddCallback(tt *testing.T) {
 	t.PanicMatch(func() { v.AddCallback(nil) }, `require callback`)
 
 	// - AddCallback, SH (callback), EX (panic, no callback), UN
+	call1, call2 := 0, 0
 	cb1 := func(string) { call1++ }
 	v.AddCallback(cb1)
 	v.SharedLock()
@@ -281,6 +281,7 @@ func TestAddCallback(tt *testing.T) {
 			v, err := schemaver.New()
 			t.Nil(err)
 			reset()
+			call1, call2 = 0, 0
 			v.AddCallback(cb1)
 			if cb2 != nil {
 				v.AddCallback(cb2)
@@ -309,28 +310,35 @@ func TestAddCallback(tt *testing.T) {
 		}
 	}
 
-	// - SH/EX, callback - panic, UN   !!! TODO
+	// - SH/EX, callback - panic, UN
 	reset()
-	v.SharedLock()
-	t.Equal(call1, 1)
-	t.PanicMatch(func() { v.ExclusiveLock() }, `unable to acquire exclusive lock under shared lock`)
-	t.Equal(call1, 1)
+	os.Setenv(schemaver.EnvLocation, "test://")
+	v, err = schemaver.New()
+	t.Nil(err)
+
+	cb := func(string) { panic(`stoped`) }
+	v.AddCallback(cb)
+	t.PanicMatch(func() { v.SharedLock() }, `stoped`)
 	v.Unlock()
+	t.Equal(un, 1)
+	t.PanicMatch(func() { v.ExclusiveLock() }, `stoped`)
+	v.Unlock()
+	t.Equal(un, 2)
 
 }
 
 var (
-	errBadLocation           = errors.New("location must not contain host")
-	errInitialized           = errors.New("version already initialized")
-	errNotInitialized        = errors.New("version is not initialized")
-	sh, ex, un, call1, call2 int
-	ver                      string
+	errBadLocation    = errors.New("location must not contain host")
+	errInitialized    = errors.New("version already initialized")
+	errNotInitialized = errors.New("version is not initialized")
+	sh, ex, un        int
+	ver               string
 )
 
 func reset() {
 	os.Unsetenv(schemaver.EnvSkipLock)
 	os.Setenv(schemaver.EnvLocation, "test://")
-	ver, sh, ex, un, call1, call2 = "42", 0, 0, 0, 0, 0
+	ver, sh, ex, un = "42", 0, 0, 0
 }
 
 func mockInitialize(loc *url.URL) error {
