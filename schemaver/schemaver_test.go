@@ -86,7 +86,7 @@ func TestNew(tt *testing.T) {
 	// - test:///ready, success
 	os.Setenv(schemaver.EnvLocation, "test:///ready")
 	_, err = schemaver.New()
-	t.Equal(err, nil)
+	t.Nil(err)
 }
 
 // - SH/EX (with backend, return version), UN (with backend)
@@ -316,12 +316,12 @@ func TestAddCallback(tt *testing.T) {
 	v, err = schemaver.New()
 	t.Nil(err)
 
-	cb := func(string) { panic(`stoped`) }
+	cb := func(string) { panic(`stopped`) }
 	v.AddCallback(cb)
-	t.PanicMatch(func() { v.SharedLock() }, `stoped`)
+	t.PanicMatch(func() { v.SharedLock() }, `stopped`)
 	v.Unlock()
 	t.Equal(un, 1)
-	t.PanicMatch(func() { v.ExclusiveLock() }, `stoped`)
+	t.PanicMatch(func() { v.ExclusiveLock() }, `stopped`)
 	v.Unlock()
 	t.Equal(un, 2)
 
