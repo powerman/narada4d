@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"net/url"
+	"regexp"
 	"strings"
 	"time"
 
@@ -66,7 +67,7 @@ func connect(loc *url.URL) (*storage, error) {
 
 func validate(loc *url.URL) error {
 	if loc.User == nil || loc.User.Username() == "" {
-		return errors.New("Username absent, require mysql://username[:password]@host[:port]/database")
+		return errors.New("username absent, require mysql://username[:password]@host[:port]/database")
 	} else if loc.Host == "" {
 		return errors.New("incorrect Host, require mysql://username[:password]@host[:port]/database")
 	} else if loc.Path == "" || loc.Path == "/" {
@@ -133,8 +134,16 @@ func (s *storage) Get() string {
 }
 
 func (s *storage) Set(ver string) {
-	_, err := s.db.Exec(sqlSetVersion, ver)
+	ms, err := regexp.MatchString(`^(0-9)*[\.][(0-9)*][\.](0-9)*$`, ver)
 	if err != nil {
 		panic(err)
+	}
+	if ver == "none" || ver == "dirty" || ms {
+		_, err := s.db.Exec(sqlSetVersion, ver)
+		if err != nil {
+			panic(err)
+		}
+	} else {
+		panic("not correct version value, require 'none','dirty' or digits")
 	}
 }
