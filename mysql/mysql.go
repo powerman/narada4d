@@ -40,7 +40,6 @@ func init() {
 }
 
 func connect(loc *url.URL) (*storage, error) {
-	s := &storage{}
 	err := validate(loc)
 	if err != nil {
 		return nil, err
@@ -57,6 +56,7 @@ func connect(loc *url.URL) (*storage, error) {
 	cfg.WriteTimeout = 5 * time.Second
 	cfg.ParseTime = true
 
+	s := &storage{}
 	s.db, err = sql.Open("mysql", cfg.FormatDSN())
 	if err != nil {
 		return nil, err
@@ -66,13 +66,13 @@ func connect(loc *url.URL) (*storage, error) {
 
 func validate(loc *url.URL) error {
 	if loc.User == nil || loc.User.Username() == "" {
-		return errors.New("incorrect Username, require mysql://username[:password]@host[:port]/database")
+		return errors.New("Username absent, require mysql://username[:password]@host[:port]/database")
 	} else if loc.Host == "" {
 		return errors.New("incorrect Host, require mysql://username[:password]@host[:port]/database")
 	} else if loc.Path == "" || loc.Path == "/" {
 		return errors.New("require database, mysql://username[:password]@host[:port]/database")
 	} else if loc.RawQuery != "" || loc.Fragment != "" {
-		return errors.New("require only  mysql://username[:password]@host[:port]/database")
+		return errors.New("unexpected query params or fragment, require mysql://username[:password]@host[:port]/database")
 	}
 	return nil
 }
@@ -86,11 +86,10 @@ func initialize(loc *url.URL) error {
 	if err != nil {
 		return err
 	}
-	s.db.Close()
-	return err
+	return s.db.Close()
 }
 
-func new(loc *url.URL) (v schemaver.Manage, err error) {
+func new(loc *url.URL) (schemaver.Manage, error) {
 	return connect(loc)
 }
 
