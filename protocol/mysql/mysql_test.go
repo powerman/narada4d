@@ -20,10 +20,11 @@ import (
 )
 
 const (
-	dbName = "gotest"
-	dbHost = "127.0.0.1"
-	dbUser = "gotestuser"
-	dbPass = "gotestpass"
+	dbName           = "gotest"
+	dbHost           = "127.0.0.1"
+	dbUser           = "gotestuser"
+	dbPass           = "gotestpass"
+	dropTableVersion = "DROP TABLE Narada4D"
 )
 
 var dbPort string
@@ -60,65 +61,275 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
-// - mysql://tanya:010203@localhost:3306/PROJECT (success)
-// - mysql://tanya:010203@localhost:3306/
-// - mysql://tanya:010203@/PROJECT
-// - mysql://tanya@localhost:3306/PROJECT(success)
-// - mysql://tanya@local/PROJECT
-// - mysql://010203@localhost:3306/PROJECT
-// - mysql://localhost:3306/PROJECT
-// - mysql://tanya:010203@localhost:3306/PROJECT/?a=3
-// - mysql://tanya:010203@localhost:3306/PROJECT/#a
-// - mysql://
-// - test://
-func TestConnect(t *testing.T) {
+func TestConnect(tt *testing.T) {
+	t := check.T(tt)
 
+	require := "require mysql://username[:password]@host[:port]/database"
+	cases := []struct {
+		url     string
+		wanterr error
+	}{
+		{"mysql://" + dbUser + ":" + dbPass + "@" + dbHost + ":" + dbPort + "/" + dbName, nil},
+		{"mysql://root@" + dbHost + ":" + dbPort + "/" + dbName, nil},
+		{"mysql://" + dbUser + ":" + dbPass + "@" + dbHost + ":" + dbPort + "/", errors.New("database absent, " + require)},
+		{"mysql://" + dbUser + ":" + dbPass + "@/" + dbName, errors.New("host absent, " + require)},
+		{"mysql://:" + dbPass + "@" + dbHost + ":" + dbPort + "/" + dbName, errors.New("username absent, " + require)},
+		{"mysql://" + dbUser + ":" + dbPass + "@" + dbHost + ":" + dbPort + "/" + dbName + "/?a=3", errors.New("unexpected query params or fragment, " + require)},
+		{"mysql://" + dbUser + ":" + dbPass + "@" + dbHost + ":" + dbPort + "/" + dbName + "/#a", errors.New("unexpected query params or fragment, " + require)},
+		{"mysql://", errors.New("username absent, " + require)},
+		{"test://", errors.New("wrong scheme, " + require)},
+	}
+
+	for _, v := range cases {
+		p, err := url.Parse(v.url)
+		if err != nil {
+			panic(err)
+		}
+		_, err = connect(p)
+		t.Err(err, v.wanterr)
+	}
 }
 
-// - mysql://tanya@localhost:3306/PROJECT, TABLE created
-// - mysql://tanya@localhost:3306/PROJECT, Connection drop, TABLE not created, error
 func TestInitialize(tt *testing.T) {
 	t := check.T(tt)
 	t.Nil(initialize(locUser))
 }
 
-//- Protocol registered, 'SELECT COUNT (*) FROM Narada4D', true
-//- Protocol not registered, 'SELECT COUNT (*) FROM Narada4D', false
-//- Protocol registered, 'SELECT COUNT (*) FROM Narada4D', connection
-//drop, false (reconnected automaticaly - true)???
-func TestInitialized(t *testing.T) {
+func TestInitialized(tt *testing.T) {
+	t := check.T(tt)
+
+	v, err := connect(locUser)
+	if err != nil {
+		panic(err)
+	}
+
+	_, err = v.db.Exec(dropTableVersion)
+	if err != nil {
+		panic(err)
+	}
+
+	//- Protocol not registered, initialized(), false
+	t.False(v.initialized())
+
+	//- Protocol registered, initialized(), true
+	initialize(locUser)
+	t.True(v.initialized())
+}
+
+func testLock(name string, loc *url.URL, unlockc chan struct{}, statusc chan string) {
+	v, err := new(locUser)
+	if err != nil {
+		panic(err)
+	}
+
+	cancel := make(chan struct{}, 1)
+	go func() {
+		select {
+		case <-cancel:
+		case <-time.After(100 * time.Millisecond):
+			statusc <- "block " + name
+		}
+	}()
+
+	switch {
+	case strings.HasPrefix(name, "EX"):
+		v.ExclusiveLock()
+	case strings.HasPrefix(name, "SH"):
+		v.SharedLock()
+	default:
+		panic("name must begins with EX or SH")
+	}
+	cancel <- struct{}{}
+	statusc <- "acquired " + name
+
+	<-unlockc
+	v.Unlock()
+}
+
+// EX1, UN1, EX2, UN2
+func TestExSequence(tt *testing.T) {
+	t := check.T(tt)
+
+	v, err := connect(locUser)
+	if err != nil {
+		panic(err)
+	}
+	_, err = v.db.Exec(dropTableVersion)
+	if err != nil {
+		panic(err)
+	}
+	t.Nil(initialize(locUser))
+
+	statusc := make(chan string)
+	un1 := make(chan struct{})
+	un2 := make(chan struct{})
+	go testLock("EX1", locUser, un1, statusc)
+	t.Equal(<-statusc, "acquired EX1")
+	un1 <- struct{}{}
+	go testLock("EX2", locUser, un2, statusc)
+	t.Equal(<-statusc, "acquired EX2")
+	un2 <- struct{}{}
+}
+
+// - EX1, EX2(block), UN1, (unblockEX2), UN2
+func TestExParallel(tt *testing.T) {
+	t := check.T(tt)
+
+	v, err := connect(locUser)
+	if err != nil {
+		panic(err)
+	}
+	_, err = v.db.Exec(dropTableVersion)
+	if err != nil {
+		panic(err)
+	}
+	t.Nil(initialize(locUser))
+
+	statusc := make(chan string)
+	un1 := make(chan struct{})
+	un2 := make(chan struct{})
+	go testLock("EX1", locUser, un1, statusc)
+	t.Equal(<-statusc, "acquired EX1")
+	go testLock("EX2", locUser, un2, statusc)
+	t.Equal(<-statusc, "block EX2")
+	un1 <- struct{}{}
+	t.Equal(<-statusc, "acquired EX2")
+	un2 <- struct{}{}
 
 }
 
-// - SH, SH, UN, UN
-// - SH, EX(block), UN(SH), EX, UN(EX)
-// - EX, SH(block), UN(EX), SH, UN(SH)
-// - SH, EX(block), SH(block), UN(SH), EX, UN(EX), SH, UN(SH)
-func TestShExLock(t *testing.T) {
+// - EX1, SH2(block), UN1, (unblock)SH2, UN2
+func TestExShParallel(tt *testing.T) {
+	t := check.T(tt)
 
+	v, err := connect(locUser)
+	if err != nil {
+		panic(err)
+	}
+	_, err = v.db.Exec(dropTableVersion)
+	if err != nil {
+		panic(err)
+	}
+	t.Nil(initialize(locUser))
+
+	statusc := make(chan string)
+	un1 := make(chan struct{})
+	un2 := make(chan struct{})
+	go testLock("EX1", locUser, un1, statusc)
+	t.Equal(<-statusc, "acquired EX1")
+	go testLock("SH2", locUser, un2, statusc)
+	t.Equal(<-statusc, "block SH2")
+	un1 <- struct{}{}
+	t.Equal(<-statusc, "acquired SH2")
+	un2 <- struct{}{}
 }
 
-// - UN, error
-func TestUnlock(t *testing.T) {
+// - SH1, SH2, UN1, UN2
+func TestShParallel(tt *testing.T) {
+	t := check.T(tt)
 
+	v, err := connect(locUser)
+	if err != nil {
+		panic(err)
+	}
+	_, err = v.db.Exec(dropTableVersion)
+	if err != nil {
+		panic(err)
+	}
+	t.Nil(initialize(locUser))
+
+	statusc := make(chan string)
+	un1 := make(chan struct{})
+	un2 := make(chan struct{})
+	go testLock("SH1", locUser, un1, statusc)
+	t.Equal(<-statusc, "acquired SH1")
+	go testLock("SH2", locUser, un2, statusc)
+	t.Equal(<-statusc, "acquired SH2")
+	un1 <- struct{}{}
+	un2 <- struct{}{}
 }
 
-// - Protocol registered, 'SELECT val FROM Narada4D WHERE var=`version`' (success)
-// - Protocol not registered, 'SELECT val FROM Narada4D WHERE var=`version`', panic
-func TestGet(t *testing.T) {
+// - SH1, EX2(block), SH3(block), UN1, (unblock)EX2, UN2, (unblock)SH3, UN3
+func TestExPriority(tt *testing.T) {
+	t := check.T(tt)
 
+	v, err := connect(locUser)
+	if err != nil {
+		panic(err)
+	}
+	_, err = v.db.Exec(dropTableVersion)
+	if err != nil {
+		panic(err)
+	}
+	t.Nil(initialize(locUser))
+
+	statusc := make(chan string)
+	un1 := make(chan struct{})
+	un2 := make(chan struct{})
+	un3 := make(chan struct{})
+	go testLock("SH1", locUser, un1, statusc)
+	t.Equal(<-statusc, "acquired SH1")
+	go testLock("EX2", locUser, un2, statusc)
+	t.Equal(<-statusc, "block EX2")
+	go testLock("SH3", locUser, un3, statusc)
+	t.Equal(<-statusc, "block SH3")
+	un1 <- struct{}{}
+	t.Equal(<-statusc, "acquired EX2")
+	un2 <- struct{}{}
+	t.Equal(<-statusc, "acquired SH3")
+	un3 <- struct{}{}
 }
 
-// - Protocol registered, sqlSetVersion, val=43, success
-// - Protocol registered, sqlSetVersion, val=43.0, success
-// - Protocol registered, sqlSetVersion, val=43.0.1, success
-// - Protocol registered, sqlSetVersion, val="", panic
-// - Protocol registered, sqlSetVersion, val=0, ?
-// - Protocol registered, sqlSetVersion, val=-18, panic
-// - Protocol registered, sqlSetVersion, val=rat, panic
-// - Protocol not registered, sqlSetVersion, val=43, panic
-func TestSet(t *testing.T) {
+func TestGet(tt *testing.T) {
+	t := check.T(tt)
 
+	v, err := connect(locUser)
+	if err != nil {
+		panic(err)
+	}
+
+	// - Protocol registered, Get(), "none" (success)
+	t.Equal(v.Get(), "none")
+
+	_, err = v.db.Exec(dropTableVersion)
+	if err != nil {
+		panic(err)
+	}
+
+	// - Protocol not registered, Get(), panic
+	t.Panic(func() { v.Get() }, `Table 'gotest.Narada4D' dosen't exist`)
+}
+
+func TestSet(tt *testing.T) {
+	t := check.T(tt)
+
+	c, err := connect(locUser)
+	if err != nil {
+		panic(err)
+	}
+
+	initialize(locUser)
+
+	cases := []struct {
+		val       string
+		wantpanic bool
+	}{
+		{"none", false},
+		{"dirty", false},
+		{"43", false},
+		{"43.0", false},
+		{"43.0.1", false},
+		{"", true},
+		{"rat", true},
+	}
+
+	for _, v := range cases {
+		if v.wantpanic {
+			t.PanicMatch(func() { c.Set(v.val) }, `not correct version value, require 'none' or 'dirty' or consists of one or more digits separated with single dots`)
+		} else {
+			t.NotPanic(func() { c.Set(v.val) })
+		}
+	}
 }
 
 func dockerCleanup() {
