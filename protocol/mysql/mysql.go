@@ -62,16 +62,22 @@ func connect(loc *url.URL) (*storage, error) {
 	if err != nil {
 		return nil, err
 	}
+	err = s.db.Ping()
+	if err != nil {
+		panic(err)
+	}
 	return s, err
 }
 
 func validate(loc *url.URL) error {
-	if loc.User == nil || loc.User.Username() == "" {
+	if loc.Scheme != "mysql" {
+		return errors.New("wrong scheme, require mysql://username[:password]@host[:port]/database")
+	} else if loc.User == nil || loc.User.Username() == "" {
 		return errors.New("username absent, require mysql://username[:password]@host[:port]/database")
 	} else if loc.Host == "" {
-		return errors.New("incorrect Host, require mysql://username[:password]@host[:port]/database")
+		return errors.New("host absent, require mysql://username[:password]@host[:port]/database")
 	} else if loc.Path == "" || loc.Path == "/" {
-		return errors.New("require database, mysql://username[:password]@host[:port]/database")
+		return errors.New("database absent, require mysql://username[:password]@host[:port]/database")
 	} else if loc.RawQuery != "" || loc.Fragment != "" {
 		return errors.New("unexpected query params or fragment, require mysql://username[:password]@host[:port]/database")
 	}
@@ -133,17 +139,15 @@ func (s *storage) Get() string {
 	return version
 }
 
+var reVersion = regexp.MustCompile(`\A(?:none|dirty|\d+(?:[.]\d+)*)\z`)
+
 func (s *storage) Set(ver string) {
-	ms, err := regexp.MatchString(`^(0-9)*[\.][(0-9)*][\.](0-9)*$`, ver)
-	if err != nil {
-		panic(err)
-	}
-	if ver == "none" || ver == "dirty" || ms {
+	if reVersion.MatchString(ver) {
 		_, err := s.db.Exec(sqlSetVersion, ver)
 		if err != nil {
 			panic(err)
 		}
 	} else {
-		panic("not correct version value, require 'none','dirty' or digits")
+		panic("not correct version value, require 'none' or 'dirty' or consists of one or more digits separated with single dots")
 	}
 }
