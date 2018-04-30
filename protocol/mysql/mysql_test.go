@@ -355,7 +355,7 @@ func runMySQL() (port string, err error) {
 	}()
 
 	ctx, _ := context.WithTimeout(context.Background(), 30*time.Second)
-	for {
+	for ctx.Err() == nil {
 		if err = db.PingContext(ctx); err == nil {
 			return port, nil
 		}
