@@ -69,25 +69,36 @@ func TestConnect(tt *testing.T) {
 		url     string
 		wanterr error
 	}{
-		{"mysql://" + dbUser + ":" + dbPass + "@" + dbHost + ":" + dbPort + "/" + dbName, nil},
-		{"mysql://root@" + dbHost + ":" + dbPort + "/" + dbName, nil},
-		{"mysql://incorrectUser:" + dbPass + "@" + dbHost + ":" + dbPort + "/" + dbName, errors.New("Access denied for user 'incorrectUser'@'172.17.0.1' (using password: (YES))")},
-		{"mysql://" + dbUser + ":incorrectPass@" + dbHost + ":" + dbPort + "/" + dbName, errors.New("")},
-		{"mysql://" + dbUser + ":" + dbPass + "@" + dbHost + ":" + dbPort + "/", errors.New("database absent, " + require)},
-		{"mysql://" + dbUser + ":" + dbPass + "@" + dbHost + ":" + dbPort, errors.New("database absent, " + require)},
-		{"mysql://" + dbUser + ":" + dbPass + "@/" + dbName, errors.New("host absent, " + require)},
-		{"mysql://:" + dbPass + "@" + dbHost + ":" + dbPort + "/" + dbName, errors.New("username absent, " + require)},
-		{"mysql://" + dbUser + ":" + dbPass + "@" + dbHost + ":" + dbPort + "/" + dbName + "?a=3", errors.New("unexpected query params or fragment, " + require)},
-		{"mysql://" + dbUser + ":" + dbPass + "@" + dbHost + ":" + dbPort + "/" + dbName + "#a", errors.New("unexpected query params or fragment, " + require)},
-		{"mysql://", errors.New("username absent, " + require)},
+		{fmt.Sprintf("mysql://%s:%s@%s:%s/%s", dbUser, dbPass, dbHost, dbPort, dbName), nil},
+		{fmt.Sprintf("mysql://root@%s:%s/%s", dbHost, dbPort, dbName), nil},
+		{fmt.Sprintf("mysql://%s:%s@%s:%s/", dbUser, dbPass, dbHost, dbPort), errors.New("database absent, " + require)},
+		{fmt.Sprintf("mysql://%s:%s@%s:%s", dbUser, dbPass, dbHost, dbPort), errors.New("database absent, " + require)},
+		{fmt.Sprintf("mysql://%s:%s@/%s", dbUser, dbPass, dbName), errors.New("host absent, " + require)},
+		{fmt.Sprintf("mysql://:%s@%s:%s/%s", dbPass, dbHost, dbPort, dbName), errors.New("username absent, " + require)},
+		{fmt.Sprintf("mysql://%s:%s@%s:%s/%s?a=3", dbUser, dbPass, dbHost, dbPort, dbName), errors.New("unexpected query params or fragment, " + require)},
+		{fmt.Sprintf("mysql://%s:%s@%s:%s/%s#a", dbUser, dbPass, dbHost, dbPort, dbName), errors.New("unexpected query params or fragment, " + require)},
+		{fmt.Sprintf("mysql://"), errors.New("username absent, " + require)},
 	}
 
 	for _, v := range cases {
 		p, err := url.Parse(v.url)
 		t.Nil(err)
-		_, err = connect(p)
+		c, err := connect(p)
 		t.Err(err, v.wanterr)
+		if v.wanterr == nil {
+			c.db.Close()
+		}
 	}
+
+	p, err := url.Parse(fmt.Sprintf("mysql://incUserName:%s@%s:%s/%s", dbPass, dbHost, dbPort, dbName))
+	t.Nil(err)
+	_, err = connect(p)
+	t.Match(err, `Access denied for user 'incUserName'@.* \(using password: YES\)`)
+
+	p, err = url.Parse(fmt.Sprintf("mysql://%s:incPass@%s:%s/%s", dbUser, dbHost, dbPort, dbName))
+	t.Nil(err)
+	_, err = connect(p)
+	t.Match(err, ` Access denied for user 'gotestuser'@.* \(using password: YES\)`)
 }
 
 func TestInitialize(tt *testing.T) {
@@ -100,8 +111,6 @@ func TestInitialized(tt *testing.T) {
 	t := check.T(tt)
 
 	v, err := connect(locUser)
-	t.Nil(err)
-	_, err = v.db.Exec(dropTableVersion)
 	t.Nil(err)
 	//- Protocol not registered, initialized(), false
 	t.False(v.initialized())
@@ -247,12 +256,13 @@ func TestGet(tt *testing.T) {
 	v, err := connect(locUser)
 	t.Nil(err)
 
-	// - Protocol not registered, Get(), panic
+	// - No version Set, Get(), panic
 	t.Panic(func() { v.Get() }, `Table 'gotest.Narada4D' dosen't exist`)
 
 	t.Nil(initialize(locUser))
 	defer dropTable(t)
-	// - Protocol registered, Get(), "none" (success)
+
+	// - Set virsion "none", Get(), "none" (success)
 	t.Equal(v.Get(), "none")
 
 }
@@ -270,13 +280,19 @@ func TestSet(tt *testing.T) {
 		val       string
 		wantpanic bool
 	}{
+		{"42.", true},
+		{"42..", true},
+		{".42", true},
+		{"-42", true},
+		{"", true},
+		{"rat", true},
+		{"v1.2.3", true},
+		{"None", true},
 		{"none", false},
 		{"dirty", false},
 		{"43", false},
-		{"43.0", false},
+		{"0", false},
 		{"43.0.1", false},
-		{"", true},
-		{"rat", true},
 	}
 
 	for _, v := range cases {
@@ -286,6 +302,9 @@ func TestSet(tt *testing.T) {
 			t.NotPanic(func() { c.Set(v.val) })
 		}
 	}
+
+	// - Set(version), Get(version)
+	t.Equal(c.Get(), "43.0.1")
 }
 
 func dropTable(t *check.C) {
