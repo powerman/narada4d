@@ -98,7 +98,7 @@ func TestConnect(tt *testing.T) {
 	p, err = url.Parse(fmt.Sprintf("mysql://%s:incPass@%s:%s/%s", dbUser, dbHost, dbPort, dbName))
 	t.Nil(err)
 	_, err = connect(p)
-	t.Match(err, ` Access denied for user 'gotestuser'@.* \(using password: YES\)`)
+	t.Match(err, `Access denied for user 'gotestuser'@.* \(using password: YES\)`)
 }
 
 func TestInitialize(tt *testing.T) {
@@ -112,10 +112,11 @@ func TestInitialized(tt *testing.T) {
 
 	v, err := connect(locUser)
 	t.Nil(err)
-	//- Protocol not registered, initialized(), false
+
+	//- Not initialized()
 	t.False(v.initialized())
 
-	//- Protocol registered, initialized(), true
+	//- Initialized()
 	t.Nil(initialize(locUser))
 	t.True(v.initialized())
 	dropTable(t)
@@ -151,7 +152,7 @@ func testLock(name string, loc *url.URL, unlockc chan struct{}, statusc chan str
 	v.Unlock()
 }
 
-// EX1, UN1, EX2, UN2
+// - EX1, UN1, EX2, UN2
 func TestExSequence(tt *testing.T) {
 	t := check.T(tt)
 
@@ -256,15 +257,13 @@ func TestGet(tt *testing.T) {
 	v, err := connect(locUser)
 	t.Nil(err)
 
-	// - No version Set, Get(), panic
+	// - Not initialized
 	t.Panic(func() { v.Get() }, `Table 'gotest.Narada4D' dosen't exist`)
 
+	// - Initialized
 	t.Nil(initialize(locUser))
 	defer dropTable(t)
-
-	// - Set virsion "none", Get(), "none" (success)
 	t.Equal(v.Get(), "none")
-
 }
 
 func TestSet(tt *testing.T) {
@@ -300,11 +299,9 @@ func TestSet(tt *testing.T) {
 			t.PanicMatch(func() { c.Set(v.val) }, `invalid version value, require 'none' or 'dirty' or one or more digits separated with single dots`)
 		} else {
 			t.NotPanic(func() { c.Set(v.val) })
+			t.Equal(c.Get(), v.val)
 		}
 	}
-
-	// - Set(version), Get(version)
-	t.Equal(c.Get(), "43.0.1")
 }
 
 func dropTable(t *check.C) {
