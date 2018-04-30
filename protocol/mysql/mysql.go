@@ -63,16 +63,11 @@ func connect(loc *url.URL) (*storage, error) {
 		return nil, err
 	}
 	err = s.db.Ping()
-	if err != nil {
-		panic(err)
-	}
 	return s, err
 }
 
 func validate(loc *url.URL) error {
-	if loc.Scheme != "mysql" {
-		return errors.New("wrong scheme, require mysql://username[:password]@host[:port]/database")
-	} else if loc.User == nil || loc.User.Username() == "" {
+	if loc.User == nil || loc.User.Username() == "" {
 		return errors.New("username absent, require mysql://username[:password]@host[:port]/database")
 	} else if loc.Host == "" {
 		return errors.New("host absent, require mysql://username[:password]@host[:port]/database")
@@ -148,6 +143,6 @@ func (s *storage) Set(ver string) {
 			panic(err)
 		}
 	} else {
-		panic("not correct version value, require 'none' or 'dirty' or consists of one or more digits separated with single dots")
+		panic("invalid version value, require 'none' or 'dirty' or one or more digits separated with single dots")
 	}
 }

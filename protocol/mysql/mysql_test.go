@@ -71,20 +71,20 @@ func TestConnect(tt *testing.T) {
 	}{
 		{"mysql://" + dbUser + ":" + dbPass + "@" + dbHost + ":" + dbPort + "/" + dbName, nil},
 		{"mysql://root@" + dbHost + ":" + dbPort + "/" + dbName, nil},
+		{"mysql://incorrectUser:" + dbPass + "@" + dbHost + ":" + dbPort + "/" + dbName, errors.New("Access denied for user 'incorrectUser'@'172.17.0.1' (using password: (YES))")},
+		{"mysql://" + dbUser + ":incorrectPass@" + dbHost + ":" + dbPort + "/" + dbName, errors.New("")},
 		{"mysql://" + dbUser + ":" + dbPass + "@" + dbHost + ":" + dbPort + "/", errors.New("database absent, " + require)},
+		{"mysql://" + dbUser + ":" + dbPass + "@" + dbHost + ":" + dbPort, errors.New("database absent, " + require)},
 		{"mysql://" + dbUser + ":" + dbPass + "@/" + dbName, errors.New("host absent, " + require)},
 		{"mysql://:" + dbPass + "@" + dbHost + ":" + dbPort + "/" + dbName, errors.New("username absent, " + require)},
-		{"mysql://" + dbUser + ":" + dbPass + "@" + dbHost + ":" + dbPort + "/" + dbName + "/?a=3", errors.New("unexpected query params or fragment, " + require)},
-		{"mysql://" + dbUser + ":" + dbPass + "@" + dbHost + ":" + dbPort + "/" + dbName + "/#a", errors.New("unexpected query params or fragment, " + require)},
+		{"mysql://" + dbUser + ":" + dbPass + "@" + dbHost + ":" + dbPort + "/" + dbName + "?a=3", errors.New("unexpected query params or fragment, " + require)},
+		{"mysql://" + dbUser + ":" + dbPass + "@" + dbHost + ":" + dbPort + "/" + dbName + "#a", errors.New("unexpected query params or fragment, " + require)},
 		{"mysql://", errors.New("username absent, " + require)},
-		{"test://", errors.New("wrong scheme, " + require)},
 	}
 
 	for _, v := range cases {
 		p, err := url.Parse(v.url)
-		if err != nil {
-			panic(err)
-		}
+		t.Nil(err)
 		_, err = connect(p)
 		t.Err(err, v.wanterr)
 	}
@@ -93,31 +93,27 @@ func TestConnect(tt *testing.T) {
 func TestInitialize(tt *testing.T) {
 	t := check.T(tt)
 	t.Nil(initialize(locUser))
+	dropTable(t)
 }
 
 func TestInitialized(tt *testing.T) {
 	t := check.T(tt)
 
 	v, err := connect(locUser)
-	if err != nil {
-		panic(err)
-	}
-
+	t.Nil(err)
 	_, err = v.db.Exec(dropTableVersion)
-	if err != nil {
-		panic(err)
-	}
-
+	t.Nil(err)
 	//- Protocol not registered, initialized(), false
 	t.False(v.initialized())
 
 	//- Protocol registered, initialized(), true
-	initialize(locUser)
+	t.Nil(initialize(locUser))
 	t.True(v.initialized())
+	dropTable(t)
 }
 
 func testLock(name string, loc *url.URL, unlockc chan struct{}, statusc chan string) {
-	v, err := new(locUser)
+	v, err := new(loc)
 	if err != nil {
 		panic(err)
 	}
@@ -150,15 +146,8 @@ func testLock(name string, loc *url.URL, unlockc chan struct{}, statusc chan str
 func TestExSequence(tt *testing.T) {
 	t := check.T(tt)
 
-	v, err := connect(locUser)
-	if err != nil {
-		panic(err)
-	}
-	_, err = v.db.Exec(dropTableVersion)
-	if err != nil {
-		panic(err)
-	}
 	t.Nil(initialize(locUser))
+	defer dropTable(t)
 
 	statusc := make(chan string)
 	un1 := make(chan struct{})
@@ -175,15 +164,8 @@ func TestExSequence(tt *testing.T) {
 func TestExParallel(tt *testing.T) {
 	t := check.T(tt)
 
-	v, err := connect(locUser)
-	if err != nil {
-		panic(err)
-	}
-	_, err = v.db.Exec(dropTableVersion)
-	if err != nil {
-		panic(err)
-	}
 	t.Nil(initialize(locUser))
+	defer dropTable(t)
 
 	statusc := make(chan string)
 	un1 := make(chan struct{})
@@ -202,15 +184,8 @@ func TestExParallel(tt *testing.T) {
 func TestExShParallel(tt *testing.T) {
 	t := check.T(tt)
 
-	v, err := connect(locUser)
-	if err != nil {
-		panic(err)
-	}
-	_, err = v.db.Exec(dropTableVersion)
-	if err != nil {
-		panic(err)
-	}
 	t.Nil(initialize(locUser))
+	defer dropTable(t)
 
 	statusc := make(chan string)
 	un1 := make(chan struct{})
@@ -228,15 +203,8 @@ func TestExShParallel(tt *testing.T) {
 func TestShParallel(tt *testing.T) {
 	t := check.T(tt)
 
-	v, err := connect(locUser)
-	if err != nil {
-		panic(err)
-	}
-	_, err = v.db.Exec(dropTableVersion)
-	if err != nil {
-		panic(err)
-	}
 	t.Nil(initialize(locUser))
+	defer dropTable(t)
 
 	statusc := make(chan string)
 	un1 := make(chan struct{})
@@ -253,15 +221,8 @@ func TestShParallel(tt *testing.T) {
 func TestExPriority(tt *testing.T) {
 	t := check.T(tt)
 
-	v, err := connect(locUser)
-	if err != nil {
-		panic(err)
-	}
-	_, err = v.db.Exec(dropTableVersion)
-	if err != nil {
-		panic(err)
-	}
 	t.Nil(initialize(locUser))
+	defer dropTable(t)
 
 	statusc := make(chan string)
 	un1 := make(chan struct{})
@@ -284,31 +245,26 @@ func TestGet(tt *testing.T) {
 	t := check.T(tt)
 
 	v, err := connect(locUser)
-	if err != nil {
-		panic(err)
-	}
-
-	// - Protocol registered, Get(), "none" (success)
-	t.Equal(v.Get(), "none")
-
-	_, err = v.db.Exec(dropTableVersion)
-	if err != nil {
-		panic(err)
-	}
+	t.Nil(err)
 
 	// - Protocol not registered, Get(), panic
 	t.Panic(func() { v.Get() }, `Table 'gotest.Narada4D' dosen't exist`)
+
+	t.Nil(initialize(locUser))
+	defer dropTable(t)
+	// - Protocol registered, Get(), "none" (success)
+	t.Equal(v.Get(), "none")
+
 }
 
 func TestSet(tt *testing.T) {
 	t := check.T(tt)
 
 	c, err := connect(locUser)
-	if err != nil {
-		panic(err)
-	}
+	t.Nil(err)
 
-	initialize(locUser)
+	t.Nil(initialize(locUser))
+	defer dropTable(t)
 
 	cases := []struct {
 		val       string
@@ -325,11 +281,20 @@ func TestSet(tt *testing.T) {
 
 	for _, v := range cases {
 		if v.wantpanic {
-			t.PanicMatch(func() { c.Set(v.val) }, `not correct version value, require 'none' or 'dirty' or consists of one or more digits separated with single dots`)
+			t.PanicMatch(func() { c.Set(v.val) }, `invalid version value, require 'none' or 'dirty' or one or more digits separated with single dots`)
 		} else {
 			t.NotPanic(func() { c.Set(v.val) })
 		}
 	}
+}
+
+func dropTable(t *check.C) {
+	t.Helper()
+	v, err := connect(locUser)
+	t.Nil(err)
+	_, err = v.db.Exec(dropTableVersion)
+	t.Nil(err)
+	t.Nil(v.db.Close())
 }
 
 func dockerCleanup() {
