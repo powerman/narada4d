@@ -251,19 +251,26 @@ func TestExPriority(tt *testing.T) {
 	un3 <- struct{}{}
 }
 
-func TestGet(tt *testing.T) {
+func TestNotInitialized(tt *testing.T) {
 	t := check.T(tt)
 
 	v, err := connect(locUser)
 	t.Nil(err)
 
-	// - Not initialized
-	t.Panic(func() { v.Get() }, `Table 'gotest.Narada4D' dosen't exist`)
+	t.PanicMatch(func() { v.SharedLock() }, `Table 'gotest.Narada4D' doesn't exist`)
+}
 
-	// - Initialized
+func TestGet(tt *testing.T) {
+	t := check.T(tt)
+
+	v, err := connect(locUser)
+	t.Nil(err)
 	t.Nil(initialize(locUser))
 	defer dropTable(t)
+
+	v.SharedLock()
 	t.Equal(v.Get(), "none")
+	v.Unlock()
 }
 
 func TestSet(tt *testing.T) {
@@ -294,6 +301,8 @@ func TestSet(tt *testing.T) {
 		{"43.0.1", false},
 	}
 
+	c.ExclusiveLock()
+	defer c.Unlock()
 	for _, v := range cases {
 		if v.wantpanic {
 			t.PanicMatch(func() { c.Set(v.val) }, `invalid version value, require 'none' or 'dirty' or one or more digits separated with single dots`)

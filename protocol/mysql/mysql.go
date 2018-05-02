@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/go-sql-driver/mysql"
+	"github.com/powerman/must"
 	"github.com/powerman/narada4d/schemaver"
 )
 
@@ -31,6 +32,7 @@ const (
 
 type storage struct {
 	db *sql.DB
+	tx *sql.Tx
 }
 
 func init() {
@@ -105,43 +107,56 @@ func (s *storage) initialized() bool {
 }
 
 func (s *storage) SharedLock() {
-	_, err := s.db.Exec(sqlSharedLock)
-	if err != nil {
-		panic(err)
+	if s.tx != nil {
+		panic("already locked")
 	}
+	var err error
+	s.tx, err = s.db.Begin()
+	must.PanicIf(err)
+	_, err = s.tx.Exec(sqlSharedLock)
+	must.PanicIf(err)
 }
 
 func (s *storage) ExclusiveLock() {
-	_, err := s.db.Exec(sqlExclusiveLock)
-	if err != nil {
-		panic(err)
+	if s.tx != nil {
+		panic("already locked")
 	}
+	var err error
+	s.tx, err = s.db.Begin()
+	must.PanicIf(err)
+	_, err = s.tx.Exec(sqlExclusiveLock)
+	must.PanicIf(err)
 }
 
 func (s *storage) Unlock() {
-	_, err := s.db.Exec(sqlUnlock)
-	if err != nil {
-		panic(err)
+	if s.tx == nil {
+		panic("not locked")
 	}
+	_, err := s.tx.Exec(sqlUnlock)
+	must.PanicIf(err)
+	s.tx.Commit()
+	s.tx = nil
 }
 
 func (s *storage) Get() string {
-	var version string
-	err := s.db.QueryRow(sqlGetVersion).Scan(&version)
-	if err != nil {
-		panic(err)
+	if s.tx == nil {
+		panic("not locked")
 	}
+	var version string
+	err := s.tx.QueryRow(sqlGetVersion).Scan(&version)
+	must.PanicIf(err)
 	return version
 }
 
 var reVersion = regexp.MustCompile(`\A(?:none|dirty|\d+(?:[.]\d+)*)\z`)
 
 func (s *storage) Set(ver string) {
+	if s.tx == nil {
+		panic("not locked")
+	}
 	if reVersion.MatchString(ver) {
-		_, err := s.db.Exec(sqlSetVersion, ver)
-		if err != nil {
-			panic(err)
-		}
+		_, err := s.tx.Exec(sqlSetVersion, ver)
+		must.PanicIf(err)
 	} else {
 		panic("invalid version value, require 'none' or 'dirty' or one or more digits separated with single dots")
 	}
