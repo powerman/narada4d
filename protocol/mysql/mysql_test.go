@@ -336,7 +336,7 @@ func runMySQL() (port string, err error) {
 		"-e", "MYSQL_DATABASE="+dbName,
 		"-e", "MYSQL_USER="+dbUser,
 		"-e", "MYSQL_PASSWORD="+dbPass,
-		"mysql")
+		"mysql:5.6")
 	if err != nil {
 		return "", err
 	}
