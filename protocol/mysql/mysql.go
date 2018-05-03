@@ -86,11 +86,9 @@ func initialize(loc *url.URL) error {
 	if err != nil {
 		return err
 	}
+	defer s.db.Close()
 	_, err = s.db.Exec(sqlCreateTable)
-	if err != nil {
-		return err
-	}
-	return s.db.Close()
+	return err
 }
 
 func new(loc *url.URL) (schemaver.Manage, error) {
