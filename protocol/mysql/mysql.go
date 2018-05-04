@@ -15,13 +15,12 @@ import (
 
 const (
 	sqlCreateTable = `
-			CREATE TABLE Narada4D(
-			var VARCHAR(255) PRIMARY KEY,
-			val VARCHAR(255) NOT NULL
-			)
-			SELECT "version" as var, "none" as val
-			`
-
+CREATE TABLE Narada4D (
+	 var VARCHAR(191) PRIMARY KEY
+	,val VARCHAR(255) NOT NULL
+)
+SELECT "version" as var, "none" as val
+`
 	sqlInitialized   = `SELECT COUNT(*) FROM Narada4D`
 	sqlSharedLock    = `LOCK TABLE Narada4D READ`
 	sqlExclusiveLock = `LOCK TABLE Narada4D WRITE`
