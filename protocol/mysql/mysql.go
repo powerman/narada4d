@@ -54,7 +54,7 @@ func connect(loc *url.URL) (*storage, error) {
 	cfg.Net = "tcp"
 	cfg.Addr = loc.Host
 	cfg.DBName = strings.TrimPrefix(loc.Path, "/")
-	cfg.Collation = "utf8mb4_general_ci"
+	cfg.Collation = "utf8mb4_unicode_ci"
 	cfg.ReadTimeout = 5 * time.Second
 	cfg.WriteTimeout = 5 * time.Second
 	cfg.ParseTime = true
