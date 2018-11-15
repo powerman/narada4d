@@ -357,13 +357,14 @@ func runMySQL() (port string, err error) {
 
 	stdout := os.Stdout
 	os.Stdout = nil
-	mysql.SetLogger(log.New(ioutil.Discard, "", 0))
+	_ = mysql.SetLogger(log.New(ioutil.Discard, "", 0))
 	defer func() {
 		os.Stdout = stdout
-		mysql.SetLogger(log.New(os.Stderr, "[mysql] ", log.Ldate|log.Ltime|log.Lshortfile))
+		_ = mysql.SetLogger(log.New(os.Stderr, "[mysql] ", log.Ldate|log.Ltime|log.Lshortfile))
 	}()
 
-	ctx, _ := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
 	for ctx.Err() == nil {
 		if err = db.PingContext(ctx); err == nil {
 			return port, nil

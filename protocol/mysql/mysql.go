@@ -68,16 +68,18 @@ func connect(loc *url.URL) (*storage, error) {
 }
 
 func validate(loc *url.URL) error {
-	if loc.User == nil || loc.User.Username() == "" {
+	switch {
+	case loc.User == nil || loc.User.Username() == "":
 		return errors.New("username absent, require mysql://username[:password]@host[:port]/database")
-	} else if loc.Host == "" {
+	case loc.Host == "":
 		return errors.New("host absent, require mysql://username[:password]@host[:port]/database")
-	} else if loc.Path == "" || loc.Path == "/" {
+	case loc.Path == "" || loc.Path == "/":
 		return errors.New("database absent, require mysql://username[:password]@host[:port]/database")
-	} else if loc.RawQuery != "" || loc.Fragment != "" {
+	case loc.RawQuery != "" || loc.Fragment != "":
 		return errors.New("unexpected query params or fragment, require mysql://username[:password]@host[:port]/database")
+	default:
+		return nil
 	}
-	return nil
 }
 
 func initialize(loc *url.URL) error {
@@ -131,7 +133,7 @@ func (s *storage) Unlock() {
 	}
 	_, err := s.tx.Exec(sqlUnlock)
 	must.PanicIf(err)
-	s.tx.Commit()
+	must.PanicIf(s.tx.Commit())
 	s.tx = nil
 }
 

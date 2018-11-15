@@ -115,11 +115,12 @@ func (v *SchemaVer) ExclusiveLock() string {
 	v.mu.Lock()
 	defer v.mu.Unlock()
 
-	if v.lockType == exclusive {
+	switch {
+	case v.lockType == exclusive:
 		v.skipUnlock++
-	} else if v.lockType == shared {
+	case v.lockType == shared:
 		panic("unable to acquire exclusive lock under shared lock")
-	} else {
+	default:
 		v.backend.ExclusiveLock()
 		v.lockType = exclusive
 		if err := os.Setenv(EnvSkipLock, "1"); err != nil {

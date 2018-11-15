@@ -95,7 +95,7 @@ func TestShExLock(tt *testing.T) {
 	t := check.T(tt)
 	reset()
 
-	cases := []struct {
+	cases := []struct { // nolint:maligned
 		setEnv      bool
 		envValue    string
 		wantBackend bool
@@ -278,7 +278,7 @@ func TestAddCallback(tt *testing.T) {
 	//   - NARADA_SKIP_LOCK=1, EX, callback(1,2), UN
 	for _, cb2 := range []func(string){nil, func(string) { call2++ }} {
 		for _, skipLock := range []bool{false, true} {
-			v, err := schemaver.New()
+			v, err = schemaver.New()
 			t.Nil(err)
 			reset()
 			call1, call2 = 0, 0
