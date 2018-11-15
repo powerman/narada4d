@@ -1,4 +1,4 @@
-# Narada4D
+# Narada4D [![GoDoc](https://godoc.org/github.com/powerman/narada4d/schemaver?status.svg)](https://godoc.org/github.com/powerman/narada4d/schemaver) [![Go Report Card](https://goreportcard.com/badge/github.com/powerman/narada4d)](https://goreportcard.com/report/github.com/powerman/narada4d) [![CircleCI](https://circleci.com/gh/powerman/narada4d.svg?style=svg)](https://circleci.com/gh/powerman/narada4d) [![Coverage Status](https://coveralls.io/repos/github/powerman/narada4d/badge.svg?branch=master)](https://coveralls.io/github/powerman/narada4d?branch=master)
 
 Applications like stateful microservices deployed in docker containers
 needs to manage their data schema version - both to protect against
