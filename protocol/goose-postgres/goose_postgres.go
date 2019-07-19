@@ -1,4 +1,4 @@
-package goose_postgres
+package goosepostgres
 
 import (
 	"database/sql"
@@ -8,7 +8,7 @@ import (
 
 	"github.com/powerman/must"
 	"github.com/powerman/narada4d/schemaver"
-	_ "github.com/powerman/pqx"
+	_ "github.com/powerman/pqx" //nolint:golint
 	"github.com/pressly/goose"
 )
 
@@ -24,7 +24,7 @@ type storage struct {
 }
 
 func init() {
-	schemaver.RegisterProtocol("goose_postgres", schemaver.Backend{
+	schemaver.RegisterProtocol("goose-postgres", schemaver.Backend{
 		Initialize: initialize,
 		New:        newStorage,
 	})
@@ -42,7 +42,7 @@ func initialize(loc *url.URL) error {
 		return err
 	}
 	s := manage.(*storage)
-	defer s.db.Close()
+	defer s.db.Close() //nolint:errcheck
 
 	if initialized(s.db) {
 		return errors.New("already initialized")

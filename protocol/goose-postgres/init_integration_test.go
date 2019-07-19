@@ -1,6 +1,6 @@
 // +build integration
 
-package goose_postgres
+package goosepostgres
 
 import (
 	"fmt"

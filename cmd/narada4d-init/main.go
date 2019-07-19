@@ -4,6 +4,8 @@ import (
 	"log"
 
 	_ "github.com/powerman/narada4d/protocol/file"
+	_ "github.com/powerman/narada4d/protocol/goose-postgres"
+	_ "github.com/powerman/narada4d/protocol/mysql"
 	"github.com/powerman/narada4d/schemaver"
 )
 

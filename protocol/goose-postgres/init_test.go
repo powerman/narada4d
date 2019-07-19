@@ -1,4 +1,4 @@
-package goose_postgres
+package goosepostgres
 
 import (
 	"os"
