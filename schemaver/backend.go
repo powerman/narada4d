@@ -8,8 +8,7 @@ import (
 // Backend used for registering backend implementing concrete protocol.
 type Backend struct {
 	// New returns implementation of SchemaVerBackend working with
-	// version at given location or error if location is incorrect or
-	// not initialized.
+	// version at given location or error if location is incorrect.
 	New func(*url.URL) (Manage, error)
 	// Initialize version at given location or return error if
 	// location is incorrect or already initialized.

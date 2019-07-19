@@ -21,7 +21,6 @@ CREATE TABLE Narada4D (
 )
 SELECT "version" as var, "none" as val
 `
-	sqlInitialized   = `SELECT COUNT(*) FROM Narada4D`
 	sqlSharedLock    = `LOCK TABLE Narada4D READ`
 	sqlExclusiveLock = `LOCK TABLE Narada4D WRITE`
 	sqlUnlock        = `UNLOCK TABLES`
@@ -53,10 +52,17 @@ func connect(loc *url.URL) (*storage, error) {
 	cfg.Net = "tcp"
 	cfg.Addr = loc.Host
 	cfg.DBName = strings.TrimPrefix(loc.Path, "/")
+	cfg.Params = map[string]string{
+		"sql_mode": "'STRICT_ALL_TABLES'",
+	}
 	cfg.Collation = "utf8mb4_unicode_ci"
+	cfg.Loc = time.UTC
+	cfg.MaxAllowedPacket = 0 // fetch from server
+	cfg.Timeout = 5 * time.Second
 	cfg.ReadTimeout = 5 * time.Second
 	cfg.WriteTimeout = 5 * time.Second
 	cfg.ParseTime = true
+	cfg.RejectReadOnly = true
 
 	s := &storage{}
 	s.db, err = sql.Open("mysql", cfg.FormatDSN())
@@ -94,15 +100,6 @@ func initialize(loc *url.URL) error {
 
 func new(loc *url.URL) (schemaver.Manage, error) {
 	return connect(loc)
-}
-
-func (s *storage) initialized() bool {
-	v, err := s.db.Query(sqlInitialized)
-	if err != nil {
-		return false
-	}
-	_ = v.Close()
-	return true
 }
 
 func (s *storage) SharedLock() {

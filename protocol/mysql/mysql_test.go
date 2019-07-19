@@ -107,6 +107,12 @@ func TestInitialize(tt *testing.T) {
 	dropTable(t)
 }
 
+func initialized(s *storage) bool {
+	const sqlInitialized = `SELECT COUNT(*) FROM Narada4D`
+	_, err := s.db.Exec(sqlInitialized)
+	return err == nil
+}
+
 func TestInitialized(tt *testing.T) {
 	t := check.T(tt)
 
@@ -114,11 +120,11 @@ func TestInitialized(tt *testing.T) {
 	t.Nil(err)
 
 	//- Not initialized()
-	t.False(v.initialized())
+	t.False(initialized(v))
 
 	//- Initialized()
 	t.Nil(initialize(locUser))
-	t.True(v.initialized())
+	t.True(initialized(v))
 	dropTable(t)
 }
 
