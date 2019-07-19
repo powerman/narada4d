@@ -11,21 +11,18 @@ import (
 	"github.com/powerman/narada4d/schemaver"
 )
 
-var schemaVer *schemaver.SchemaVer
-
 func main() {
 	log.SetFlags(0)
 
-	var err error
-	schemaVer, err = schemaver.New()
+	schemaVer, err := schemaver.New()
 	if err != nil {
 		log.Fatalln("Failed to detect data schema version:", err)
 	}
 
-	os.Exit(lock(os.Args[1:]))
+	os.Exit(lock(schemaVer, os.Args[1:]))
 }
 
-func lock(args []string) int {
+func lock(schemaVer *schemaver.SchemaVer, args []string) int {
 	if os.Getenv(schemaver.EnvSkipLock) != "" {
 		fmt.Println("Skip acquiring exclusive lock.")
 		defer fmt.Println("Skip releasing exclusive lock.")

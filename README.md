@@ -182,3 +182,16 @@ Managing data schema versions requires:
 - To change version: `UPDATE Narada4D SET val=? WHERE var='version'`.
 
 # Tools
+
+## narada4d-init
+
+Initialize schema version at location provided in $NARADA4D.
+Schema version must not be already initialized.
+
+## narada4d-lock [/path/to/cmd [args…]]
+
+Run given command with given args under exclusive lock on schema version
+at location provided in $NARADA4D. Without command will run shell (useful
+for manual maintenance in case of "dirty" schema version).
+Exits with exit code of executed command or 127 of command was terminated
+by signal.

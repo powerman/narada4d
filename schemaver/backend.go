@@ -40,6 +40,7 @@ type Manage interface {
 	Set(string)
 }
 
+//nolint:gochecknoglobals
 var registered = make(map[string]*Backend)
 
 // RegisterProtocol must be called by packages which implement some

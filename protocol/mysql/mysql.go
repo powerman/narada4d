@@ -87,7 +87,7 @@ func initialize(loc *url.URL) error {
 	if err != nil {
 		return err
 	}
-	defer s.db.Close()
+	defer s.db.Close() //nolint:errcheck
 	_, err = s.db.Exec(sqlCreateTable)
 	return err
 }
@@ -101,7 +101,7 @@ func (s *storage) initialized() bool {
 	if err != nil {
 		return false
 	}
-	v.Close()
+	_ = v.Close()
 	return true
 }
 
@@ -147,6 +147,7 @@ func (s *storage) Get() string {
 	return version
 }
 
+//nolint:gochecknoglobals
 var reVersion = regexp.MustCompile(`\A(?:none|dirty|\d+(?:[.]\d+)*)\z`)
 
 func (s *storage) Set(ver string) {
