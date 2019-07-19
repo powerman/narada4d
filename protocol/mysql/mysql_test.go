@@ -28,7 +28,7 @@ const (
 )
 
 var dbPort string
-var locUser, locRoot *url.URL
+var loc *url.URL
 
 var dockerIDs []string
 
@@ -46,11 +46,7 @@ func TestMain(m *testing.M) {
 		os.Exit(1)
 	}
 
-	locUser, err = url.Parse(fmt.Sprintf("mysql://%s:%s@%s:%s/%s", dbUser, dbPass, dbHost, dbPort, dbName))
-	if err != nil {
-		panic(err)
-	}
-	locRoot, err = url.Parse(fmt.Sprintf("mysql://root@%s:%s/%s", dbHost, dbPort, dbName))
+	loc, err = url.Parse(fmt.Sprintf("mysql://%s:%s@%s:%s/%s", dbUser, dbPass, dbHost, dbPort, dbName))
 	if err != nil {
 		panic(err)
 	}
@@ -103,7 +99,7 @@ func TestConnect(tt *testing.T) {
 
 func TestInitialize(tt *testing.T) {
 	t := check.T(tt)
-	t.Nil(initialize(locUser))
+	t.Nil(initialize(loc))
 	dropTable(t)
 }
 
@@ -116,14 +112,14 @@ func initialized(s *storage) bool {
 func TestInitialized(tt *testing.T) {
 	t := check.T(tt)
 
-	v, err := connect(locUser)
+	v, err := connect(loc)
 	t.Nil(err)
 
 	//- Not initialized()
 	t.False(initialized(v))
 
 	//- Initialized()
-	t.Nil(initialize(locUser))
+	t.Nil(initialize(loc))
 	t.True(initialized(v))
 	dropTable(t)
 }
@@ -162,16 +158,16 @@ func testLock(name string, loc *url.URL, unlockc chan struct{}, statusc chan str
 func TestExSequence(tt *testing.T) {
 	t := check.T(tt)
 
-	t.Nil(initialize(locUser))
+	t.Nil(initialize(loc))
 	defer dropTable(t)
 
 	statusc := make(chan string)
 	un1 := make(chan struct{})
 	un2 := make(chan struct{})
-	go testLock("EX1", locUser, un1, statusc)
+	go testLock("EX1", loc, un1, statusc)
 	t.Equal(<-statusc, "acquired EX1")
 	un1 <- struct{}{}
-	go testLock("EX2", locUser, un2, statusc)
+	go testLock("EX2", loc, un2, statusc)
 	t.Equal(<-statusc, "acquired EX2")
 	un2 <- struct{}{}
 }
@@ -180,15 +176,15 @@ func TestExSequence(tt *testing.T) {
 func TestExParallel(tt *testing.T) {
 	t := check.T(tt)
 
-	t.Nil(initialize(locUser))
+	t.Nil(initialize(loc))
 	defer dropTable(t)
 
 	statusc := make(chan string)
 	un1 := make(chan struct{})
 	un2 := make(chan struct{})
-	go testLock("EX1", locUser, un1, statusc)
+	go testLock("EX1", loc, un1, statusc)
 	t.Equal(<-statusc, "acquired EX1")
-	go testLock("EX2", locUser, un2, statusc)
+	go testLock("EX2", loc, un2, statusc)
 	t.Equal(<-statusc, "block EX2")
 	un1 <- struct{}{}
 	t.Equal(<-statusc, "acquired EX2")
@@ -200,15 +196,15 @@ func TestExParallel(tt *testing.T) {
 func TestExShParallel(tt *testing.T) {
 	t := check.T(tt)
 
-	t.Nil(initialize(locUser))
+	t.Nil(initialize(loc))
 	defer dropTable(t)
 
 	statusc := make(chan string)
 	un1 := make(chan struct{})
 	un2 := make(chan struct{})
-	go testLock("EX1", locUser, un1, statusc)
+	go testLock("EX1", loc, un1, statusc)
 	t.Equal(<-statusc, "acquired EX1")
-	go testLock("SH2", locUser, un2, statusc)
+	go testLock("SH2", loc, un2, statusc)
 	t.Equal(<-statusc, "block SH2")
 	un1 <- struct{}{}
 	t.Equal(<-statusc, "acquired SH2")
@@ -219,15 +215,15 @@ func TestExShParallel(tt *testing.T) {
 func TestShParallel(tt *testing.T) {
 	t := check.T(tt)
 
-	t.Nil(initialize(locUser))
+	t.Nil(initialize(loc))
 	defer dropTable(t)
 
 	statusc := make(chan string)
 	un1 := make(chan struct{})
 	un2 := make(chan struct{})
-	go testLock("SH1", locUser, un1, statusc)
+	go testLock("SH1", loc, un1, statusc)
 	t.Equal(<-statusc, "acquired SH1")
-	go testLock("SH2", locUser, un2, statusc)
+	go testLock("SH2", loc, un2, statusc)
 	t.Equal(<-statusc, "acquired SH2")
 	un1 <- struct{}{}
 	un2 <- struct{}{}
@@ -237,18 +233,18 @@ func TestShParallel(tt *testing.T) {
 func TestExPriority(tt *testing.T) {
 	t := check.T(tt)
 
-	t.Nil(initialize(locUser))
+	t.Nil(initialize(loc))
 	defer dropTable(t)
 
 	statusc := make(chan string)
 	un1 := make(chan struct{})
 	un2 := make(chan struct{})
 	un3 := make(chan struct{})
-	go testLock("SH1", locUser, un1, statusc)
+	go testLock("SH1", loc, un1, statusc)
 	t.Equal(<-statusc, "acquired SH1")
-	go testLock("EX2", locUser, un2, statusc)
+	go testLock("EX2", loc, un2, statusc)
 	t.Equal(<-statusc, "block EX2")
-	go testLock("SH3", locUser, un3, statusc)
+	go testLock("SH3", loc, un3, statusc)
 	t.Equal(<-statusc, "block SH3")
 	un1 <- struct{}{}
 	t.Equal(<-statusc, "acquired EX2")
@@ -260,7 +256,7 @@ func TestExPriority(tt *testing.T) {
 func TestNotInitialized(tt *testing.T) {
 	t := check.T(tt)
 
-	v, err := connect(locUser)
+	v, err := connect(loc)
 	t.Nil(err)
 
 	t.PanicMatch(func() { v.SharedLock() }, `Table 'gotest.Narada4D' doesn't exist`)
@@ -269,9 +265,9 @@ func TestNotInitialized(tt *testing.T) {
 func TestGet(tt *testing.T) {
 	t := check.T(tt)
 
-	v, err := connect(locUser)
+	v, err := connect(loc)
 	t.Nil(err)
-	t.Nil(initialize(locUser))
+	t.Nil(initialize(loc))
 	defer dropTable(t)
 
 	v.SharedLock()
@@ -282,10 +278,10 @@ func TestGet(tt *testing.T) {
 func TestSet(tt *testing.T) {
 	t := check.T(tt)
 
-	c, err := connect(locUser)
+	c, err := connect(loc)
 	t.Nil(err)
 
-	t.Nil(initialize(locUser))
+	t.Nil(initialize(loc))
 	defer dropTable(t)
 
 	cases := []struct {
@@ -321,7 +317,7 @@ func TestSet(tt *testing.T) {
 
 func dropTable(t *check.C) {
 	t.Helper()
-	v, err := connect(locUser)
+	v, err := connect(loc)
 	t.Nil(err)
 	_, err = v.db.Exec(dropTableVersion)
 	t.Nil(err)

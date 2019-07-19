@@ -181,6 +181,35 @@ Managing data schema versions requires:
 - To get version: `SELECT val FROM Narada4D WHERE var='version'`.
 - To change version: `UPDATE Narada4D SET val=? WHERE var='version'`.
 
+## goose-postgres://user:pass@host[:port]/database?sslmode=disable&…
+
+This case is a bit different from above, because `goose` tool is not aware
+about Narada4D and it'll manage DB schema version on it's own. Because of
+this `SchemaVer.Set` is not supported with `goose`.
+
+- Version is stored in table named `goose_db_version`.
+- This table is managed by [goose](https://github.com/pressly/goose) tool.
+- To initialize: call any goose command/API.
+- To check is it initialized: `SELECT COUNT(*) FROM goose_db_version`.
+- To set shared lock: `LOCK TABLE goose_db_version IN SHARE MODE`.
+    - This will prevent `goose` tool from making any changes (actually
+      it'll hang waiting for lock, so make sure you have set corresponding
+      timeouts, e.g. PostgreSQL `statement_timeout`) but allows it to read
+      current version/status.
+- To set exclusive lock: `LOCK TABLE goose_db_version IN SHARE UPDATE EXCLUSIVE MODE`.
+    - This won't prevent *anyone* not aware about Narada4D (including
+      `goose` tool) from making changes, but only one of Narada4D-aware
+      apps will be running after acquiring this lock.
+- To unlock: commit/rollback transaction used to set lock.
+    - Make sure transaction won't be closed prematurely because of idle
+      timeout.
+- To get version: call goose API.
+- To change version: call goose command to apply some up/down migration.
+- **TODO:** It is unclear how to manage "dirty" in case goose fail some
+  migration which was executed not within transaction (goose doesn't
+  provide any way to detect this case and continue to report previous
+  schema version after failed migration, which is incorrect).
+
 # Tools
 
 ## narada4d-init
