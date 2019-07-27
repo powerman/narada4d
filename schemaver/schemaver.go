@@ -200,3 +200,12 @@ func (v *SchemaVer) AddCallback(callback func(string)) {
 
 	v.callbacks = append(v.callbacks, callback)
 }
+
+// Close release any resources used to manage schema version.
+//
+// No other methods should be called after Close.
+func (v *SchemaVer) Close() error {
+	v.mu.Lock()
+	defer v.mu.Unlock()
+	return v.backend.Close()
+}

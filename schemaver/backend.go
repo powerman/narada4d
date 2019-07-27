@@ -37,6 +37,8 @@ type Manage interface {
 	// Set will be called after ExclusiveLock and must change current
 	// version.
 	Set(string)
+	// Close will release any resources used to manage schema version.
+	Close() error
 }
 
 //nolint:gochecknoglobals

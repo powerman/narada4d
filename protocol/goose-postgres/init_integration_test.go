@@ -59,7 +59,7 @@ func dropTable(t *check.C) {
 	s := v.(*storage)
 	_, err = s.db.Exec(sqlDropTable)
 	t.Nil(err)
-	t.Nil(s.db.Close())
+	t.Nil(v.Close())
 }
 
 func testLock(name string, loc *url.URL, unlockc chan struct{}, statusc chan string) {

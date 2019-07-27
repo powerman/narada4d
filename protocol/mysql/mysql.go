@@ -158,3 +158,10 @@ func (s *storage) Set(ver string) {
 		panic("invalid version value, require 'none' or 'dirty' or one or more digits separated with single dots")
 	}
 }
+
+func (s *storage) Close() error {
+	if s.tx != nil {
+		return errors.New("locked")
+	}
+	return s.db.Close()
+}

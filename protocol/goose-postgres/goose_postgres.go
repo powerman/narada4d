@@ -116,3 +116,10 @@ func (s *storage) Get() string {
 func (s *storage) Set(string) {
 	panic("not supported")
 }
+
+func (s *storage) Close() error {
+	if s.tx != nil {
+		return errors.New("locked")
+	}
+	return s.db.Close()
+}

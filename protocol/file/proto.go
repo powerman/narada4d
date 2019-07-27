@@ -147,3 +147,12 @@ func (v *schemaVer) Set(ver string) {
 		panic(err)
 	}
 }
+
+// Close implements schemaver.Backend interface.
+func (v *schemaVer) Close() error {
+	err := v.lockFile.Close()
+	if err == nil {
+		err = v.lockQueueFile.Close()
+	}
+	return err
+}

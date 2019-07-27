@@ -368,3 +368,4 @@ func (m *mockManage) ExclusiveLock() { ex++ }
 func (m *mockManage) Unlock()        { un++ }
 func (m *mockManage) Get() string    { return ver }
 func (m *mockManage) Set(v string)   { ver = v }
+func (m *mockManage) Close() error   { return nil }
