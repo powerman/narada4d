@@ -1,3 +1,4 @@
+// Package goosepostgres registers schemaver.Backend implemented using goose.
 package goosepostgres
 
 import (

@@ -324,7 +324,6 @@ func TestAddCallback(tt *testing.T) {
 	t.PanicMatch(func() { v.ExclusiveLock() }, `stopped`)
 	v.Unlock()
 	t.Equal(un, 2)
-
 }
 
 var (

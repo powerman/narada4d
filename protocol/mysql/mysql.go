@@ -1,3 +1,4 @@
+// Package mysql registers schemaver.Backend implemented using Narada4D table.
 package mysql
 
 import (

@@ -1,3 +1,4 @@
+// Package schemaver provides a way to manage your data schema version.
 package schemaver
 
 import (

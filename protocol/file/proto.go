@@ -1,3 +1,4 @@
+// Package file registers schemaver.Backend implemented using lock-files.
 package file
 
 import (

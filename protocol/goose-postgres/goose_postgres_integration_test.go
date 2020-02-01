@@ -66,7 +66,6 @@ func TestExParallel(tt *testing.T) {
 	un1 <- struct{}{}
 	t.Equal(<-statusc, "acquired EX2")
 	un2 <- struct{}{}
-
 }
 
 // - EX1, SH2(block), UN1, (unblock)SH2, UN2

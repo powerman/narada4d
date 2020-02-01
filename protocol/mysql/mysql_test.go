@@ -189,7 +189,6 @@ func TestExParallel(tt *testing.T) {
 	un1 <- struct{}{}
 	t.Equal(<-statusc, "acquired EX2")
 	un2 <- struct{}{}
-
 }
 
 // - EX1, SH2(block), UN1, (unblock)SH2, UN2
@@ -306,6 +305,7 @@ func TestSet(tt *testing.T) {
 	c.ExclusiveLock()
 	defer c.Unlock()
 	for _, v := range cases {
+		v := v
 		if v.wantpanic {
 			t.PanicMatch(func() { c.Set(v.val) }, `invalid version value, require 'none' or 'dirty' or one or more digits separated with single dots`)
 		} else {
