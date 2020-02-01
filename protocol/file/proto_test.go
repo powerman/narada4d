@@ -46,21 +46,21 @@ func TestInitialize(tt *testing.T) {
 	loc, err := url.Parse(tempdir)
 	t.Nil(err)
 
-	t.Err(initialize(loc), &os.PathError{Op: "open", Path: tempdir + "/.lock", Err: syscall.EACCES})
+	t.Err(initialize(loc), syscall.EACCES)
 
 	// - file:///path/to/dir/with/subdir/.lock/
 	t.Nil(os.Chmod(tempdir, 0755))
 	lpath := tempdir + "/.lock"
 	t.Nil(os.Mkdir(lpath, 0755))
 
-	t.Err(initialize(loc), &os.PathError{Op: "open", Path: lpath, Err: syscall.EISDIR})
+	t.Err(initialize(loc), syscall.EISDIR)
 	t.Nil(os.Remove(lpath))
 
 	// - file:///path/to/dir;/with/subdir/.lock.queue/
 	lqpath := tempdir + "/.lock.queue"
 	t.Nil(os.Mkdir(lqpath, 0755))
 
-	t.Err(initialize(loc), &os.PathError{Op: "open", Path: lqpath, Err: syscall.EISDIR})
+	t.Err(initialize(loc), syscall.EISDIR)
 	t.Nil(os.Remove(lqpath))
 	t.Nil(os.Remove(tempdir + "/.lock"))
 
@@ -68,7 +68,7 @@ func TestInitialize(tt *testing.T) {
 	vpath := tempdir + "/.version"
 	t.Nil(os.Mkdir(vpath, 0755))
 
-	t.Err(initialize(loc), &os.LinkError{Op: "symlink", Old: "none", New: vpath, Err: syscall.EEXIST})
+	t.Err(initialize(loc), syscall.EEXIST)
 	t.Nil(os.Remove(lpath))
 	t.Nil(os.Remove(lqpath))
 	t.Nil(os.Remove(vpath))
