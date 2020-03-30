@@ -95,7 +95,7 @@ func TestShExLock(tt *testing.T) {
 	t := check.T(tt)
 	reset()
 
-	cases := []struct { // nolint:maligned
+	cases := []struct {
 		setEnv      bool
 		envValue    string
 		wantBackend bool

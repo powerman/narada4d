@@ -9,7 +9,7 @@ import (
 
 	"github.com/powerman/must"
 	"github.com/powerman/narada4d/schemaver"
-	_ "github.com/powerman/pqx" //nolint:golint
+	_ "github.com/powerman/pqx" //nolint:golint // Driver.
 	"github.com/pressly/goose"
 )
 
@@ -43,7 +43,7 @@ func initialize(loc *url.URL) error {
 		return err
 	}
 	s := manage.(*storage)
-	defer s.db.Close() //nolint:errcheck
+	defer s.db.Close() //nolint:errcheck // Defer.
 
 	if initialized(s.db) {
 		return errors.New("already initialized")

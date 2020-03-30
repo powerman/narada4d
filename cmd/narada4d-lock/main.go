@@ -47,7 +47,7 @@ func run(args []string) (code int) {
 		}
 		args = append(args, shell)
 	}
-	cmd := exec.Command(args[0], args[1:]...) // nolint: gas
+	cmd := exec.Command(args[0], args[1:]...) //nolint:gosec // By design.
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr

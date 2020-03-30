@@ -73,7 +73,7 @@ func TestConnect(tt *testing.T) {
 		{fmt.Sprintf("mysql://:%s@%s:%s/%s", dbPass, dbHost, dbPort, dbName), errors.New("username absent, " + require)},
 		{fmt.Sprintf("mysql://%s:%s@%s:%s/%s?a=3", dbUser, dbPass, dbHost, dbPort, dbName), errors.New("unexpected query params or fragment, " + require)},
 		{fmt.Sprintf("mysql://%s:%s@%s:%s/%s#a", dbUser, dbPass, dbHost, dbPort, dbName), errors.New("unexpected query params or fragment, " + require)},
-		{fmt.Sprintf("mysql://"), errors.New("username absent, " + require)},
+		{"mysql://", errors.New("username absent, " + require)},
 	}
 
 	for _, v := range cases {

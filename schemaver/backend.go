@@ -41,8 +41,7 @@ type Manage interface {
 	Close() error
 }
 
-//nolint:gochecknoglobals
-var registered = make(map[string]*Backend)
+var registered = make(map[string]*Backend) //nolint:gochecknoglobals // Global state.
 
 // RegisterProtocol must be called by packages which implement some
 // protocol before first call to Initialize or New.

@@ -59,9 +59,10 @@ func connect(loc *url.URL) (*storage, error) {
 	cfg.Collation = "utf8mb4_unicode_ci"
 	cfg.Loc = time.UTC
 	cfg.MaxAllowedPacket = 0 // fetch from server
-	cfg.Timeout = 5 * time.Second
-	cfg.ReadTimeout = 5 * time.Second
-	cfg.WriteTimeout = 5 * time.Second
+	const timeout = 5 * time.Second
+	cfg.Timeout = timeout
+	cfg.ReadTimeout = timeout
+	cfg.WriteTimeout = timeout
 	cfg.ParseTime = true
 	cfg.RejectReadOnly = true
 
@@ -94,7 +95,7 @@ func initialize(loc *url.URL) error {
 	if err != nil {
 		return err
 	}
-	defer s.db.Close() //nolint:errcheck
+	defer s.db.Close() //nolint:errcheck // Defer.
 	_, err = s.db.Exec(sqlCreateTable)
 	return err
 }
@@ -145,8 +146,7 @@ func (s *storage) Get() string {
 	return version
 }
 
-//nolint:gochecknoglobals
-var reVersion = regexp.MustCompile(`\A(?:none|dirty|\d+(?:[.]\d+)*)\z`)
+var reVersion = regexp.MustCompile(`\A(?:none|dirty|\d+(?:[.]\d+)*)\z`) //nolint:gochecknoglobals // Regexp.
 
 func (s *storage) Set(ver string) {
 	if s.tx == nil {
