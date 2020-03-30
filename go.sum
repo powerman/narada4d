@@ -29,11 +29,17 @@ github.com/powerman/check v1.0.1/go.mod h1:wOYaLZeuhk6i79TDfPcqkDx70tbaVLEiE0aqM
 github.com/powerman/check v1.1.0/go.mod h1:nX1qs/UsVgnQrkebazvKUJzMrtOItv4O0+Y79nhVi3Y=
 github.com/powerman/check v1.2.1 h1:x1io+fh3njxQEmbvONx5a9QWZXVwFP1BDPKNqK0uZAo=
 github.com/powerman/check v1.2.1/go.mod h1:IW+hYd9ihaKn7ri1+NGS8WWwrKdytbU8hgNC1wbcurc=
+github.com/powerman/getenv v0.1.0 h1:GTqwBYwtjoxjK/kB+qDyfUiqSz7vZ5431x002ftW13s=
+github.com/powerman/getenv v0.1.0/go.mod h1:kTSy/ckmNA/gYTbH6+XOUaGWUCeS9k7QzSol+LsOsZM=
+github.com/powerman/goose v2.7.0-rc4.0.20200329145851-5c15923690fa+incompatible h1:50EFIy0MsWcUXblSAkgRxbJRA67gz+LPSmwLaqgMHhI=
+github.com/powerman/goose v2.7.0-rc4.0.20200329145851-5c15923690fa+incompatible/go.mod h1:BJwHhs3GM6/vR+Cp2hI3l0gDsCSOeMyOIo4PLzXUNb4=
 github.com/powerman/gotest v0.2.0/go.mod h1:vR8gUJorGFev+TucLyhbbx566IelaJFxCSAcDYD4fdY=
 github.com/powerman/gotest v0.3.0 h1:3HdlkyT8XoTIw220BvCP+yy7OhB1AxZ11Qfzn00l3YQ=
 github.com/powerman/gotest v0.3.0/go.mod h1:vR8gUJorGFev+TucLyhbbx566IelaJFxCSAcDYD4fdY=
 github.com/powerman/must v0.1.0 h1:/Romq/snkUx7jU0RVxbaQWo8eoGV5LEFP7lMY2Paq7I=
 github.com/powerman/must v0.1.0/go.mod h1:agQ0zQd+ZBTI+I+KUL9G1l9ZPXTcjzOUfXvZUQpOVwo=
+github.com/powerman/mysqlx v0.1.0 h1:OuS5bXwZrEjqAcfE4EFgO2vQaCT4i4A3r2vvq6E1w24=
+github.com/powerman/mysqlx v0.1.0/go.mod h1:ZSl17PWU2DgwM2KjN8OrdAq9tYC5p4Xm3lTN6W7j3SA=
 github.com/powerman/pqx v0.6.1 h1:tlFOKQvVTiWG3FCb1jmGUzxcNzw7Ep1K5KBbSa5If/g=
 github.com/powerman/pqx v0.6.1/go.mod h1:EJGFN0+vvTWFqwT1bTrnVWrJ8hO7RAW6rp2JVhYwrVE=
 github.com/pressly/goose v2.6.0+incompatible h1:3f8zIQ8rfgP9tyI0Hmcs2YNAqUCL1c+diLe3iU8Qd/k=

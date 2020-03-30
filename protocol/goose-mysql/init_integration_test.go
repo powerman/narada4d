@@ -1,0 +1,91 @@
+// +build integration
+
+package goosemysql
+
+import (
+	"log"
+	"net/url"
+	"os"
+	"strings"
+	"time"
+
+	"github.com/go-sql-driver/mysql"
+	"github.com/powerman/check"
+	"github.com/powerman/gotest/testinit"
+	"github.com/powerman/mysqlx"
+)
+
+const (
+	testDBSuffix = "github.com/powerman/narada4d/protocol/goose_mysql"
+	sqlDropTable = "DROP TABLE goose_db_version"
+)
+
+var loc *url.URL
+
+func init() { testinit.Setup(2, setupIntegration) }
+
+func setupIntegration() {
+	logger := log.New(os.Stderr, "", log.LstdFlags)
+	var err error
+
+	loc, err = url.Parse(os.Getenv("NARADA4D_TEST_MYSQL"))
+	if err != nil {
+		testinit.Fatal("failed to parse $NARADA4D_TEST_MYSQL as URL: ", err)
+	}
+	loc.Scheme = "goose-mysql"
+
+	dbCfg, err := mysql.ParseDSN(dsn(loc))
+	if err != nil {
+		testinit.Fatal("failed to parse $NARADA4D_TEST_MYSQL as DSN: ", err)
+	}
+	dbCfg.Timeout = 3 * testSecond
+
+	dbCfg, cleanup, err := mysqlx.EnsureTempDB(logger, testDBSuffix, *dbCfg)
+	if err != nil {
+		testinit.Fatal(err)
+	}
+	testinit.Teardown(cleanup)
+
+	loc.Path = "/" + dbCfg.DBName
+}
+
+func dropTable(t *check.C) {
+	t.Helper()
+	v, err := newStorage(loc)
+	t.Nil(err)
+	s := v.(*storage)
+	_, err = s.db.Exec(sqlDropTable)
+	t.Nil(err)
+	t.Nil(v.Close())
+}
+
+func testLock(name string, loc *url.URL, unlockc chan struct{}, statusc chan string) {
+	v, err := newStorage(loc)
+	if err != nil {
+		panic(err)
+	}
+
+	cancel := make(chan struct{}, 1)
+	go func() {
+		select {
+		case <-cancel:
+		case <-time.After(testSecond / 10):
+			statusc <- "block " + name
+		}
+	}()
+
+	switch {
+	case strings.HasPrefix(name, "EX"):
+		v.ExclusiveLock()
+	case strings.HasPrefix(name, "SH"):
+		v.SharedLock()
+	default:
+		panic("name must begins with EX or SH")
+	}
+	cancel <- struct{}{}
+	statusc <- "acquired " + name
+
+	<-unlockc
+	v.Unlock()
+	_ = v.(*storage).db.Close()
+}
