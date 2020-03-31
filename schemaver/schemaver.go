@@ -23,13 +23,13 @@ const (
 	EnvSkipLock = "NARADA4D_SKIP_LOCK"
 )
 
-func location() (*url.URL, error) {
-	loc, err := url.Parse(os.Getenv(EnvLocation))
+func parseLocation(location string) (*url.URL, error) {
+	loc, err := url.Parse(location)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse $%s: %v", EnvLocation, err)
+		return nil, fmt.Errorf("narada4d: %w", err)
 	}
 	if registered[loc.Scheme] == nil {
-		return nil, fmt.Errorf("unknown protocol in $%s: %q", EnvLocation, loc.Scheme)
+		return nil, fmt.Errorf("narada4d: unknown protocol %q", loc.Scheme)
 	}
 	return loc, nil
 }
@@ -38,7 +38,7 @@ func location() (*url.URL, error) {
 //
 // Version must not be already initialized.
 func Initialize() error {
-	loc, err := location()
+	loc, err := parseLocation(os.Getenv(EnvLocation))
 	if err != nil {
 		return err
 	}
@@ -67,7 +67,14 @@ type SchemaVer struct {
 //
 // Version must be already initialized.
 func New() (*SchemaVer, error) {
-	loc, err := location()
+	return NewAt(os.Getenv(EnvLocation))
+}
+
+// NewAt creates object for managing data schema version at location.
+//
+// Version must be already initialized.
+func NewAt(location string) (*SchemaVer, error) {
+	loc, err := parseLocation(location)
 	if err != nil {
 		return nil, err
 	}

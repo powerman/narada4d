@@ -56,9 +56,9 @@ func TestLocation(tt *testing.T) {
 
 	// - case registered[loc.Scheme] = nil, error
 	os.Setenv(schemaver.EnvLocation, "new://")
-	t.Match(schemaver.Initialize(), `unknown protocol .* "new"`)
+	t.Match(schemaver.Initialize(), `unknown protocol "new"`)
 	_, err = schemaver.New()
-	t.Match(err, `unknown protocol .* "new"`)
+	t.Match(err, `unknown protocol "new"`)
 }
 
 func TestInitialize(tt *testing.T) {
