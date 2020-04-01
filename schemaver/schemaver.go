@@ -59,6 +59,7 @@ type SchemaVer struct {
 	mu         sync.Mutex
 	lockType   lockType
 	skipUnlock int
+	sharedVer  string
 	callbacks  []func(string)
 }
 
@@ -101,14 +102,21 @@ func (v *SchemaVer) SharedLock() string {
 	v.mu.Lock()
 	defer v.mu.Unlock()
 
-	if v.lockType != unlocked {
+	var ver string
+	switch v.lockType {
+	case exclusive:
 		v.skipUnlock++
-	} else {
+		ver = v.backend.Get()
+	case shared:
+		v.skipUnlock++
+		ver = v.sharedVer
+	default:
 		v.backend.SharedLock()
 		v.lockType = shared
+		v.sharedVer = v.backend.Get()
+		ver = v.sharedVer
 	}
 
-	ver := v.backend.Get()
 	for _, callback := range v.callbacks {
 		callback(ver)
 	}
@@ -123,10 +131,10 @@ func (v *SchemaVer) ExclusiveLock() string {
 	v.mu.Lock()
 	defer v.mu.Unlock()
 
-	switch {
-	case v.lockType == exclusive:
+	switch v.lockType {
+	case exclusive:
 		v.skipUnlock++
-	case v.lockType == shared:
+	case shared:
 		panic("unable to acquire exclusive lock under shared lock")
 	default:
 		v.backend.ExclusiveLock()
