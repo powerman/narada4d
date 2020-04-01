@@ -1,64 +1,27 @@
+// +build integration
+
 package mysql
 
 import (
-	"context"
-	"database/sql"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
-	"log"
 	"net/url"
-	"os"
-	"os/exec"
 	"strings"
 	"testing"
-	"time"
 
-	"github.com/go-sql-driver/mysql"
 	"github.com/powerman/check"
 )
 
-const (
-	dbName           = "gotest"
-	dbHost           = "127.0.0.1"
-	dbUser           = "gotestuser"
-	dbPass           = "gotestpass"
-	dropTableVersion = "DROP TABLE Narada4D"
-)
-
-var dbPort string
-var loc *url.URL
-
-var dockerIDs []string
-
-func TestMain(m *testing.M) {
-	_, err := docker("info")
-	if err != nil {
-		fmt.Println("SKIP:", err)
-		os.Exit(0)
-	}
-
-	dbPort, err = runMySQL()
-	if err != nil {
-		fmt.Println(err)
-		dockerCleanup()
-		os.Exit(1)
-	}
-
-	loc, err = url.Parse(fmt.Sprintf("mysql://%s:%s@%s:%s/%s", dbUser, dbPass, dbHost, dbPort, dbName))
-	if err != nil {
-		panic(err)
-	}
-
-	code := m.Run()
-	check.Report()
-	dockerCleanup()
-	os.Exit(code)
-}
-
 func TestConnect(tt *testing.T) {
 	t := check.T(tt)
+
+	var (
+		dbUser    = loc.User.Username()
+		dbPass, _ = loc.User.Password()
+		dbHost    = loc.Hostname()
+		dbPort    = loc.Port()
+		dbName    = strings.TrimPrefix(loc.Path, "/")
+	)
 
 	require := "require mysql://username[:password]@host[:port]/database"
 	cases := []struct {
@@ -66,7 +29,6 @@ func TestConnect(tt *testing.T) {
 		wanterr error
 	}{
 		{fmt.Sprintf("mysql://%s:%s@%s:%s/%s", dbUser, dbPass, dbHost, dbPort, dbName), nil},
-		{fmt.Sprintf("mysql://root@%s:%s/%s", dbHost, dbPort, dbName), nil},
 		{fmt.Sprintf("mysql://%s:%s@%s:%s/", dbUser, dbPass, dbHost, dbPort), errors.New("database absent, " + require)},
 		{fmt.Sprintf("mysql://%s:%s@%s:%s", dbUser, dbPass, dbHost, dbPort), errors.New("database absent, " + require)},
 		{fmt.Sprintf("mysql://%s:%s@/%s", dbUser, dbPass, dbName), errors.New("host absent, " + require)},
@@ -89,12 +51,12 @@ func TestConnect(tt *testing.T) {
 	p, err := url.Parse(fmt.Sprintf("mysql://incUserName:%s@%s:%s/%s", dbPass, dbHost, dbPort, dbName))
 	t.Nil(err)
 	_, err = newStorage(p)
-	t.Match(err, `Access denied for user 'incUserName'@.* \(using password: YES\)`)
+	t.Match(err, `Access denied`)
 
 	p, err = url.Parse(fmt.Sprintf("mysql://%s:incPass@%s:%s/%s", dbUser, dbHost, dbPort, dbName))
 	t.Nil(err)
 	_, err = newStorage(p)
-	t.Match(err, `Access denied for user 'gotestuser'@.* \(using password: YES\)`)
+	t.Match(err, `Access denied`)
 }
 
 func TestInitialize(tt *testing.T) {
@@ -116,36 +78,6 @@ func TestInitialized(tt *testing.T) {
 	t.Nil(initialize(loc))
 	t.True(s.initialized())
 	dropTable(t)
-}
-
-func testLock(name string, loc *url.URL, unlockc chan struct{}, statusc chan string) {
-	v, err := newStorage(loc)
-	if err != nil {
-		panic(err)
-	}
-
-	cancel := make(chan struct{}, 1)
-	go func() {
-		select {
-		case <-cancel:
-		case <-time.After(100 * time.Millisecond):
-			statusc <- "block " + name
-		}
-	}()
-
-	switch {
-	case strings.HasPrefix(name, "EX"):
-		v.ExclusiveLock()
-	case strings.HasPrefix(name, "SH"):
-		v.SharedLock()
-	default:
-		panic("name must begins with EX or SH")
-	}
-	cancel <- struct{}{}
-	statusc <- "acquired " + name
-
-	<-unlockc
-	v.Unlock()
 }
 
 // - EX1, UN1, EX2, UN2
@@ -304,97 +236,4 @@ func TestSet(tt *testing.T) {
 			t.Equal(c.Get(), v.val)
 		}
 	}
-}
-
-func dropTable(t *check.C) {
-	t.Helper()
-	s, err := newStorage(loc)
-	t.Nil(err)
-	_, err = s.db.Exec(dropTableVersion)
-	t.Nil(err)
-	t.Nil(s.Close())
-}
-
-func dockerCleanup() {
-	for _, id := range dockerIDs {
-		if _, err := docker("kill", id); err != nil {
-			fmt.Println(err)
-		}
-	}
-}
-
-func runMySQL() (port string, err error) {
-	id, err := docker("run", "-d", "--rm", "-P",
-		"-e", "MYSQL_ALLOW_EMPTY_PASSWORD=yes",
-		"-e", "MYSQL_DATABASE="+dbName,
-		"-e", "MYSQL_USER="+dbUser,
-		"-e", "MYSQL_PASSWORD="+dbPass,
-		"mysql:5.6")
-	if err != nil {
-		return "", err
-	}
-	id = strings.TrimSpace(id)
-	dockerIDs = append(dockerIDs, id)
-
-	port, err = dockerPort(id, "3306/tcp")
-	if err != nil {
-		return "", err
-	}
-
-	db, err := sql.Open("mysql", fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?timeout=1s&readTimeout=1s&writeTimeout=1s",
-		dbUser, dbPass, dbHost, port, dbName))
-	if err != nil {
-		panic(err)
-	}
-	defer db.Close()
-
-	stdout := os.Stdout
-	os.Stdout = nil
-	_ = mysql.SetLogger(log.New(ioutil.Discard, "", 0))
-	defer func() {
-		os.Stdout = stdout
-		_ = mysql.SetLogger(log.New(os.Stderr, "[mysql] ", log.Ldate|log.Ltime|log.Lshortfile))
-	}()
-
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-	for ctx.Err() == nil {
-		if err = db.PingContext(ctx); err == nil {
-			return port, nil
-		}
-		time.Sleep(time.Second)
-	}
-	return "", errors.New("failed to connect to mysql")
-}
-
-func dockerPort(id, internalPort string) (string, error) {
-	out, err := docker("inspect", id)
-	if err != nil {
-		return "", err
-	}
-	var inspect []struct {
-		NetworkSettings struct {
-			Ports map[string][]struct {
-				HostPort string
-			}
-		}
-	}
-	err = json.Unmarshal([]byte(out), &inspect)
-	if err != nil {
-		return "", err
-	}
-	port := inspect[0].NetworkSettings.Ports[internalPort][0].HostPort
-	if port == "" {
-		return "", errors.New("failed to detect port")
-	}
-	return port, nil
-}
-
-func docker(args ...string) (string, error) {
-	out, err := exec.Command("docker", args...).Output()
-	if exitErr, ok := err.(*exec.ExitError); ok {
-		fmt.Println("docker", strings.Join(args, " "))
-		fmt.Println(string(exitErr.Stderr))
-	}
-	return string(out), err
 }
