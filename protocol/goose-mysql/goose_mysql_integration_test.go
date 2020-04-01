@@ -17,17 +17,16 @@ func TestInitialize(tt *testing.T) {
 func TestInitialized(tt *testing.T) {
 	t := check.T(tt)
 
-	v, err := newStorage(loc)
+	s, err := newStorage(loc)
 	t.Nil(err)
-	s := v.(*storage)
-	defer s.db.Close()
+	defer s.Close()
 
 	//- Not initialized()
-	t.False(initialized(s.db))
+	t.False(s.initialized())
 
 	//- Initialized()
 	t.Nil(initialize(loc))
-	t.True(initialized(s.db))
+	t.True(s.initialized())
 	dropTable(t)
 }
 
@@ -132,22 +131,21 @@ func TestExPriority(tt *testing.T) {
 func TestNotInitialized(tt *testing.T) {
 	t := check.T(tt)
 
-	v, err := newStorage(loc)
+	s, err := newStorage(loc)
 	t.Nil(err)
-	defer v.(*storage).db.Close()
+	defer s.Close()
 
-	t.PanicMatch(func() { v.SharedLock() }, `.goose_db_version' doesn't exist`)
-	defer v.(*storage).tx.Rollback()
+	t.PanicMatch(func() { s.SharedLock() }, `doesn't exist`)
+	defer s.tx.Rollback()
 }
 
 func TestGet(tt *testing.T) {
 	t := check.T(tt)
 
-	v, err := newStorage(loc)
+	v, err := newInitializedStorage(loc)
 	t.Nil(err)
-	t.Nil(initialize(loc))
 	defer dropTable(t)
-	defer v.(*storage).db.Close()
+	defer v.Close()
 
 	v.SharedLock()
 	t.Equal(v.Get(), "none")
@@ -157,11 +155,10 @@ func TestGet(tt *testing.T) {
 func TestSet(tt *testing.T) {
 	t := check.T(tt)
 
-	v, err := newStorage(loc)
+	v, err := newInitializedStorage(loc)
 	t.Nil(err)
-	t.Nil(initialize(loc))
 	defer dropTable(t)
-	defer v.(*storage).db.Close()
+	defer v.Close()
 
 	v.ExclusiveLock()
 	t.PanicMatch(func() { v.Set("42") }, `not supported`)

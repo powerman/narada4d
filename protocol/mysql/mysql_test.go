@@ -79,21 +79,21 @@ func TestConnect(tt *testing.T) {
 	for _, v := range cases {
 		p, err := url.Parse(v.url)
 		t.Nil(err)
-		c, err := connect(p)
+		s, err := newStorage(p)
 		t.Err(err, v.wanterr)
 		if v.wanterr == nil {
-			c.db.Close()
+			s.Close()
 		}
 	}
 
 	p, err := url.Parse(fmt.Sprintf("mysql://incUserName:%s@%s:%s/%s", dbPass, dbHost, dbPort, dbName))
 	t.Nil(err)
-	_, err = connect(p)
+	_, err = newStorage(p)
 	t.Match(err, `Access denied for user 'incUserName'@.* \(using password: YES\)`)
 
 	p, err = url.Parse(fmt.Sprintf("mysql://%s:incPass@%s:%s/%s", dbUser, dbHost, dbPort, dbName))
 	t.Nil(err)
-	_, err = connect(p)
+	_, err = newStorage(p)
 	t.Match(err, `Access denied for user 'gotestuser'@.* \(using password: YES\)`)
 }
 
@@ -103,29 +103,23 @@ func TestInitialize(tt *testing.T) {
 	dropTable(t)
 }
 
-func initialized(s *storage) bool {
-	const sqlInitialized = `SELECT COUNT(*) FROM Narada4D`
-	_, err := s.db.Exec(sqlInitialized)
-	return err == nil
-}
-
 func TestInitialized(tt *testing.T) {
 	t := check.T(tt)
 
-	v, err := connect(loc)
+	s, err := newStorage(loc)
 	t.Nil(err)
 
 	//- Not initialized()
-	t.False(initialized(v))
+	t.False(s.initialized())
 
 	//- Initialized()
 	t.Nil(initialize(loc))
-	t.True(initialized(v))
+	t.True(s.initialized())
 	dropTable(t)
 }
 
 func testLock(name string, loc *url.URL, unlockc chan struct{}, statusc chan string) {
-	v, err := new(loc)
+	v, err := newStorage(loc)
 	if err != nil {
 		panic(err)
 	}
@@ -255,18 +249,17 @@ func TestExPriority(tt *testing.T) {
 func TestNotInitialized(tt *testing.T) {
 	t := check.T(tt)
 
-	v, err := connect(loc)
+	s, err := newStorage(loc)
 	t.Nil(err)
 
-	t.PanicMatch(func() { v.SharedLock() }, `Table 'gotest.Narada4D' doesn't exist`)
+	t.PanicMatch(func() { s.SharedLock() }, `doesn't exist`)
 }
 
 func TestGet(tt *testing.T) {
 	t := check.T(tt)
 
-	v, err := connect(loc)
+	v, err := newInitializedStorage(loc)
 	t.Nil(err)
-	t.Nil(initialize(loc))
 	defer dropTable(t)
 
 	v.SharedLock()
@@ -277,10 +270,8 @@ func TestGet(tt *testing.T) {
 func TestSet(tt *testing.T) {
 	t := check.T(tt)
 
-	c, err := connect(loc)
+	c, err := newInitializedStorage(loc)
 	t.Nil(err)
-
-	t.Nil(initialize(loc))
 	defer dropTable(t)
 
 	cases := []struct {
@@ -317,11 +308,11 @@ func TestSet(tt *testing.T) {
 
 func dropTable(t *check.C) {
 	t.Helper()
-	v, err := connect(loc)
+	s, err := newStorage(loc)
 	t.Nil(err)
-	_, err = v.db.Exec(dropTableVersion)
+	_, err = s.db.Exec(dropTableVersion)
 	t.Nil(err)
-	t.Nil(v.db.Close())
+	t.Nil(s.Close())
 }
 
 func dockerCleanup() {

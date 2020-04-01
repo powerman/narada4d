@@ -7,10 +7,10 @@ import (
 	"net/url"
 	"strconv"
 
+	"github.com/powerman/goose"
 	"github.com/powerman/must"
 	"github.com/powerman/narada4d/schemaver"
 	_ "github.com/powerman/pqx" //nolint:golint // Driver.
-	"github.com/pressly/goose"
 )
 
 const (
@@ -20,40 +20,46 @@ const (
 )
 
 type storage struct {
-	db *sql.DB
-	tx *sql.Tx
+	db    *sql.DB
+	tx    *sql.Tx
+	goose *goose.Instance
 }
 
 func init() {
 	schemaver.RegisterProtocol("goose-postgres", schemaver.Backend{
 		Initialize: initialize,
-		New:        newStorage,
+		New:        newInitializedStorage,
 	})
 }
 
-func initialized(db *sql.DB) bool {
-	var count int
-	_ = db.QueryRow(sqlInitialized).Scan(&count)
-	return count > 0
-}
-
 func initialize(loc *url.URL) error {
-	manage, err := newStorage(loc)
+	s, err := newStorage(loc)
 	if err != nil {
 		return err
 	}
-	s := manage.(*storage)
-	defer s.db.Close() //nolint:errcheck // Defer.
+	defer s.Close() //nolint:errcheck // Defer.
 
-	if initialized(s.db) {
+	if s.initialized() {
 		return errors.New("already initialized")
 	}
-
-	_, err = goose.EnsureDBVersion(s.db)
-	return err
+	return s.init()
 }
 
-func newStorage(loc *url.URL) (schemaver.Manage, error) {
+func newInitializedStorage(loc *url.URL) (schemaver.Manage, error) {
+	s, err := newStorage(loc)
+	if err != nil {
+		return nil, err
+	}
+	if !s.initialized() {
+		if err := s.init(); err != nil {
+			_ = s.Close()
+			return nil, err
+		}
+	}
+	return s, nil
+}
+
+func newStorage(loc *url.URL) (*storage, error) {
 	loc.Scheme = "postgres"
 	db, err := sql.Open("pqx", loc.String())
 	if err != nil {
@@ -61,15 +67,31 @@ func newStorage(loc *url.URL) (schemaver.Manage, error) {
 	}
 	err = db.Ping()
 	if err != nil {
+		_ = db.Close()
 		return nil, err
 	}
 
-	err = goose.SetDialect("postgres")
+	s := &storage{
+		db:    db,
+		goose: goose.NewInstance(),
+	}
+	err = s.goose.SetDialect("postgres")
 	if err != nil {
+		_ = s.Close()
 		return nil, err
 	}
+	return s, nil
+}
 
-	return &storage{db: db}, nil
+func (s *storage) initialized() bool {
+	var count int
+	_ = s.db.QueryRow(sqlInitialized).Scan(&count)
+	return count > 0
+}
+
+func (s *storage) init() error {
+	_, err := goose.EnsureDBVersion(s.db)
+	return err
 }
 
 func (s *storage) SharedLock() {

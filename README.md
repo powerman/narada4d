@@ -34,8 +34,7 @@ should be compatible and keep your data safe.
           will be released.
     - Access data in case of supported data schema version.
     - Release lock.
-- In case application can't acquire lock (data schema version is not
-  initialized yet) or see unsupported data schema version it may either
+- In case application see unsupported data schema version it may either
   exit or just repeat until this change.
 
 # Requirements
@@ -77,11 +76,7 @@ should be compatible and keep your data safe.
 - Version of data schema must be set to `none` after initializing version
   value, before defining first data schema.
     - *Rationale:* This enables to separate initialization of data schema
-      version from other operations, thus protecting against occasional
-      use of wrong value in `$NARADA4D`.
-    - **TODO:** It is unclear is this requirement is actually important,
-      or it's better to make initialization just a part of first
-      migration. Also it may make sense to use `0` instead of `none`.
+      version from other operations.
 
 ## Recommendations
 
@@ -171,9 +166,8 @@ Managing data schema versions requires:
 
 - Version is stored in table named `Narada4D`, in a row `var="version"`.
 - Neither table nor this row is never deleted.
-- To initialize: `CREATE TABLE Narada4D (var
-  VARCHAR(255) PRIMARY KEY, val VARCHAR(255) NOT NULL) SELECT "version" as
-  var, "none" as val`.
+- To initialize: `CREATE TABLE Narada4D (var VARCHAR(191) PRIMARY KEY, val
+  VARCHAR(255) NOT NULL) SELECT "version" as var, "none" as val`.
 - To check is it initialized: `SELECT COUNT(*) FROM Narada4D`.
 - To set shared lock: `LOCK TABLE Narada4D READ`.
 - To set exclusive lock: `LOCK TABLE Narada4D WRITE`.
@@ -181,11 +175,42 @@ Managing data schema versions requires:
 - To get version: `SELECT val FROM Narada4D WHERE var='version'`.
 - To change version: `UPDATE Narada4D SET val=? WHERE var='version'`.
 
-## goose-postgres://user:pass@host[:port]/database?sslmode=disable&…
+## goose-mysql://user[:pass]@host[:port]/database
 
-This case is a bit different from above, because `goose` tool is not aware
-about Narada4D and it'll manage DB schema version on it's own. Because of
-this `SchemaVer.Set` is not supported with `goose`.
+The `goose` tool is not aware about Narada4D and it'll manage DB schema
+version on it's own. Because of this `SchemaVer.Set` is not supported with
+`goose`.
+
+- Version is stored in table named `goose_db_version`.
+- This table is managed by [goose](https://github.com/pressly/goose) tool.
+- Second table named `Narada4D` is used for locking and is never deleted.
+- To initialize: call any goose command/API plus `CREATE TABLE Narada4D
+  (var VARCHAR(191) PRIMARY KEY, val VARCHAR(255) NOT NULL) SELECT
+  "version_from" as var, "goose" as val`.
+- To check is it initialized: `SELECT COUNT(*) FROM Narada4D`.
+- To set shared lock: `LOCK TABLE Narada4D READ`.
+    - This won't prevent *anyone* not aware about Narada4D (including
+      `goose` tool) from making changes.
+- To set exclusive lock: `LOCK TABLE Narada4D WRITE`.
+    - This won't prevent *anyone* not aware about Narada4D (including
+      `goose` tool) from making changes, but only one of Narada4D-aware
+      apps will be running after acquiring this lock.
+- To unlock: `UNLOCK TABLES`.
+- To get version: call goose API.
+- To change version: call goose command to apply some up/down migration.
+- **TODO:** It is unclear how to manage "dirty" in case goose fail some
+  migration which was executed not within transaction (goose doesn't
+  provide any way to detect this case and continue to report previous
+  schema version after failed migration, which is incorrect).
+    - It's recommended to keep [statements that cause an implicit commit](https://dev.mysql.com/doc/refman/5.7/en/implicit-commit.html)
+      (like CREATE/ALTER/DROP/TRUNCATE TABLE) in their own migrations,
+      with **one statement per migration**.
+
+## goose-postgres://user[:pass]@host[:port]/database?sslmode=disable&…
+
+The `goose` tool is not aware about Narada4D and it'll manage DB schema
+version on it's own. Because of this `SchemaVer.Set` is not supported with
+`goose`.
 
 - Version is stored in table named `goose_db_version`.
 - This table is managed by [goose](https://github.com/pressly/goose) tool.

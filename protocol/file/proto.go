@@ -14,20 +14,12 @@ import (
 )
 
 const (
-	proto             = "file"
 	versionFileName   = ".version"
 	lockFileName      = ".lock"
 	lockQueueFileName = ".lock.queue"
 )
 
-func init() {
-	schemaver.RegisterProtocol(proto, schemaver.Backend{
-		Initialize: initialize,
-		New:        new,
-	})
-}
-
-type schemaVer struct {
+type storage struct {
 	versionPath   string
 	lockPath      string
 	lockQueuePath string
@@ -37,7 +29,43 @@ type schemaVer struct {
 	lockQueueFD   int
 }
 
-func parse(loc *url.URL) (*schemaVer, error) {
+func init() {
+	schemaver.RegisterProtocol("file", schemaver.Backend{
+		Initialize: initialize,
+		New:        newInitializedStorage,
+	})
+}
+
+func initialize(loc *url.URL) error {
+	s, err := newStorage(loc)
+	if err != nil {
+		return err
+	}
+
+	if s.initialized() {
+		return fmt.Errorf("version already initialized at %q", s.versionPath)
+	}
+	return s.init()
+}
+
+func newInitializedStorage(loc *url.URL) (schemaver.Manage, error) {
+	s, err := newStorage(loc)
+	if err != nil {
+		return nil, err
+	}
+	if !s.initialized() {
+		if err := s.init(); err != nil {
+			return nil, err
+		}
+	}
+	err = s.open()
+	if err != nil {
+		return nil, err
+	}
+	return s, nil
+}
+
+func newStorage(loc *url.URL) (*storage, error) {
 	if loc.User != nil || loc.Host != "" || loc.RawQuery != "" || loc.Fragment != "" {
 		return nil, errors.New("location must contain only path")
 	}
@@ -47,113 +75,93 @@ func parse(loc *url.URL) (*schemaVer, error) {
 		return nil, errors.New("location path must be existing directory")
 	}
 
-	return &schemaVer{
+	s := &storage{
 		versionPath:   filepath.Join(loc.Path, versionFileName),
 		lockPath:      filepath.Join(loc.Path, lockFileName),
 		lockQueuePath: filepath.Join(loc.Path, lockQueueFileName),
-	}, nil
+	}
+	return s, nil
 }
 
-func initialize(loc *url.URL) error {
-	v, err := parse(loc)
-	if err == nil && v.initialized() {
-		err = fmt.Errorf("version already initialized at %s", v.versionPath)
+func (s *storage) initialized() bool {
+	fi, err := os.Lstat(s.versionPath)
+	return err == nil && fi.Mode()&os.ModeSymlink != 0
+}
+
+func (s *storage) init() error {
+	err := ioutil.WriteFile(s.lockPath, nil, 0444)
+	if err == nil {
+		err = ioutil.WriteFile(s.lockQueuePath, nil, 0444)
 	}
 	if err == nil {
-		err = ioutil.WriteFile(v.lockPath, nil, 0444)
-	}
-	if err == nil {
-		err = ioutil.WriteFile(v.lockQueuePath, nil, 0444)
-	}
-	if err == nil {
-		err = os.Symlink(schemaver.NoVersion, v.versionPath)
+		err = os.Symlink(schemaver.NoVersion, s.versionPath)
 	}
 	return err
 }
 
-func new(loc *url.URL) (schemaver.Manage, error) {
-	v, err := parse(loc)
+func (s *storage) open() (err error) {
+	s.lockFile, err = os.Open(s.lockPath)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	if !v.initialized() {
-		return nil, fmt.Errorf("version is not initialized at %s", v.versionPath)
-	}
-
-	v.lockFile, err = os.Open(v.lockPath)
+	s.lockQueueFile, err = os.Open(s.lockQueuePath)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	v.lockQueueFile, err = os.Open(v.lockQueuePath)
-	if err != nil {
-		return nil, err
-	}
-	v.lockFD = int(v.lockFile.Fd())
-	v.lockQueueFD = int(v.lockQueueFile.Fd())
-
-	return v, nil
+	s.lockFD = int(s.lockFile.Fd())
+	s.lockQueueFD = int(s.lockQueueFile.Fd())
+	return nil
 }
 
-func (v *schemaVer) initialized() bool {
-	fi, err := os.Lstat(v.versionPath)
-	return err == nil && fi.Mode()&os.ModeSymlink != 0
+func (s *storage) SharedLock() {
+	s.lock(syscall.LOCK_SH)
 }
 
-// SharedLock implements schemaver.Backend interface.
-func (v *schemaVer) SharedLock() {
-	v.lock(syscall.LOCK_SH)
+func (s *storage) ExclusiveLock() {
+	s.lock(syscall.LOCK_EX)
 }
 
-// ExclusiveLock implements schemaver.Backend interface.
-func (v *schemaVer) ExclusiveLock() {
-	v.lock(syscall.LOCK_EX)
-}
-
-func (v *schemaVer) lock(how int) {
-	if err := syscall.Flock(v.lockQueueFD, syscall.LOCK_EX); err != nil {
+func (s *storage) lock(how int) {
+	if err := syscall.Flock(s.lockQueueFD, syscall.LOCK_EX); err != nil {
 		panic(err)
 	}
-	if err := syscall.Flock(v.lockFD, how); err != nil {
+	if err := syscall.Flock(s.lockFD, how); err != nil {
 		panic(err)
 	}
-	if err := syscall.Flock(v.lockQueueFD, syscall.LOCK_UN); err != nil {
+	if err := syscall.Flock(s.lockQueueFD, syscall.LOCK_UN); err != nil {
 		panic(err)
 	}
 }
 
-// Unlock implements schemaver.Backend interface.
-func (v *schemaVer) Unlock() {
-	if err := syscall.Flock(v.lockFD, syscall.LOCK_UN); err != nil {
+func (s *storage) Unlock() {
+	if err := syscall.Flock(s.lockFD, syscall.LOCK_UN); err != nil {
 		panic(err)
 	}
 }
 
-// Get implements schemaver.Backend interface.
-func (v *schemaVer) Get() string {
-	ver, err := os.Readlink(v.versionPath)
+func (s *storage) Get() string {
+	ver, err := os.Readlink(s.versionPath)
 	if err != nil {
 		panic(err)
 	}
 	return ver
 }
 
-// Set implements schemaver.Backend interface.
-func (v *schemaVer) Set(ver string) {
-	tmpPath := v.versionPath + ".tmp"
+func (s *storage) Set(ver string) {
+	tmpPath := s.versionPath + ".tmp"
 	_ = os.Remove(tmpPath)
 	if err := os.Symlink(ver, tmpPath); err != nil {
 		panic(err)
 	}
-	if err := os.Rename(tmpPath, v.versionPath); err != nil {
+	if err := os.Rename(tmpPath, s.versionPath); err != nil {
 		panic(err)
 	}
 }
 
-// Close implements schemaver.Backend interface.
-func (v *schemaVer) Close() error {
-	err := v.lockFile.Close()
+func (s *storage) Close() error {
+	err := s.lockFile.Close()
 	if err == nil {
-		err = v.lockQueueFile.Close()
+		err = s.lockQueueFile.Close()
 	}
 	return err
 }

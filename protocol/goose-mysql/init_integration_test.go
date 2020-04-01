@@ -17,7 +17,7 @@ import (
 
 const (
 	testDBSuffix = "github.com/powerman/narada4d/protocol/goose_mysql"
-	sqlDropTable = "DROP TABLE goose_db_version"
+	sqlDropTable = "DROP TABLE Narada4D, goose_db_version"
 )
 
 var loc *url.URL
@@ -51,12 +51,11 @@ func setupIntegration() {
 
 func dropTable(t *check.C) {
 	t.Helper()
-	v, err := newStorage(loc)
+	s, err := newStorage(loc)
 	t.Nil(err)
-	s := v.(*storage)
 	_, err = s.db.Exec(sqlDropTable)
 	t.Nil(err)
-	t.Nil(v.Close())
+	t.Nil(s.Close())
 }
 
 func testLock(name string, loc *url.URL, unlockc chan struct{}, statusc chan string) {
@@ -87,5 +86,5 @@ func testLock(name string, loc *url.URL, unlockc chan struct{}, statusc chan str
 
 	<-unlockc
 	v.Unlock()
-	_ = v.(*storage).db.Close()
+	_ = v.Close()
 }

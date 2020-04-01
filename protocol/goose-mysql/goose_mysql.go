@@ -15,9 +15,16 @@ import (
 )
 
 const (
-	sqlInitialized   = `SELECT COUNT(*) FROM goose_db_version`
-	sqlSharedLock    = `LOCK TABLE goose_db_version READ`
-	sqlExclusiveLock = `LOCK TABLE goose_db_version WRITE`
+	sqlCreateTable = `
+CREATE TABLE Narada4D (
+	 var VARCHAR(191) PRIMARY KEY
+	,val VARCHAR(255) NOT NULL
+)
+SELECT "version_from" as var, "goose" as val
+`
+	sqlInitialized   = `SELECT COUNT(*) FROM Narada4D`
+	sqlSharedLock    = `LOCK TABLES Narada4D READ`
+	sqlExclusiveLock = `LOCK TABLES Narada4D WRITE`
 	sqlUnlock        = `UNLOCK TABLES`
 )
 
@@ -30,30 +37,35 @@ type storage struct {
 func init() {
 	schemaver.RegisterProtocol("goose-mysql", schemaver.Backend{
 		Initialize: initialize,
-		New:        newStorage,
+		New:        newInitializedStorage,
 	})
 }
 
-func initialized(db *sql.DB) bool {
-	var count int
-	_ = db.QueryRow(sqlInitialized).Scan(&count)
-	return count > 0
-}
-
 func initialize(loc *url.URL) error {
-	manage, err := newStorage(loc)
+	s, err := newStorage(loc)
 	if err != nil {
 		return err
 	}
-	s := manage.(*storage)
-	defer s.db.Close() //nolint:errcheck // Defer.
+	defer s.Close() //nolint:errcheck // Defer.
 
-	if initialized(s.db) {
+	if s.initialized() {
 		return errors.New("already initialized")
 	}
+	return s.init()
+}
 
-	_, err = s.goose.EnsureDBVersion(s.db)
-	return err
+func newInitializedStorage(loc *url.URL) (schemaver.Manage, error) {
+	s, err := newStorage(loc)
+	if err != nil {
+		return nil, err
+	}
+	if !s.initialized() {
+		if err := s.init(); err != nil {
+			_ = s.Close()
+			return nil, err
+		}
+	}
+	return s, nil
 }
 
 func dsn(loc *url.URL) string {
@@ -63,13 +75,14 @@ func dsn(loc *url.URL) string {
 	return strings.TrimPrefix(dsn.String(), "goose-mysql://")
 }
 
-func newStorage(loc *url.URL) (schemaver.Manage, error) {
+func newStorage(loc *url.URL) (*storage, error) {
 	db, err := sql.Open("mysql", dsn(loc))
 	if err != nil {
 		return nil, err
 	}
 	err = db.Ping()
 	if err != nil {
+		_ = db.Close()
 		return nil, err
 	}
 
@@ -79,9 +92,24 @@ func newStorage(loc *url.URL) (schemaver.Manage, error) {
 	}
 	err = s.goose.SetDialect("mysql")
 	if err != nil {
+		_ = s.Close()
 		return nil, err
 	}
 	return s, nil
+}
+
+func (s *storage) initialized() bool {
+	var count int
+	_ = s.db.QueryRow(sqlInitialized).Scan(&count)
+	return count > 0
+}
+
+func (s *storage) init() error {
+	_, err := s.goose.EnsureDBVersion(s.db)
+	if err == nil {
+		_, err = s.db.Exec(sqlCreateTable)
+	}
+	return err
 }
 
 func (s *storage) SharedLock() {

@@ -78,10 +78,10 @@ func TestNew(tt *testing.T) {
 	t := check.T(tt)
 	reset()
 
-	// - test:///empty, error
-	os.Setenv(schemaver.EnvLocation, "test:///empty")
+	// - test:///invalid, error
+	os.Setenv(schemaver.EnvLocation, "test:///invalid")
 	_, err := schemaver.New()
-	t.Err(err, errNotInitialized)
+	t.Err(err, errInvalid)
 
 	// - test:///ready, success
 	os.Setenv(schemaver.EnvLocation, "test:///ready")
@@ -327,11 +327,11 @@ func TestAddCallback(tt *testing.T) {
 }
 
 var (
-	errBadLocation    = errors.New("location must not contain host")
-	errInitialized    = errors.New("version already initialized")
-	errNotInitialized = errors.New("version is not initialized")
-	sh, ex, un        int
-	ver               string
+	errBadLocation = errors.New("location must not contain host")
+	errInitialized = errors.New("version already initialized")
+	errInvalid     = errors.New("version is invalid")
+	sh, ex, un     int
+	ver            string
 )
 
 func reset() {
@@ -354,8 +354,8 @@ func mockNew(loc *url.URL) (schemaver.Manage, error) {
 	if loc.Host != "" {
 		return nil, errBadLocation
 	}
-	if loc.Path == "/empty" {
-		return nil, errNotInitialized
+	if loc.Path == "/invalid" {
+		return nil, errInvalid
 	}
 	return &mockManage{}, nil
 }

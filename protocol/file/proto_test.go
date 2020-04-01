@@ -30,7 +30,7 @@ func TestBadLocation(tt *testing.T) {
 		loc, err := url.Parse(v.path)
 		t.Nil(err)
 		t.Err(initialize(loc), v.wanterr, v.path)
-		_, err = new(loc)
+		_, err = newInitializedStorage(loc)
 		t.Err(err, v.wanterr, v.path)
 	}
 }
@@ -77,7 +77,7 @@ func TestInitialize(tt *testing.T) {
 	t.Err(initialize(loc), nil)
 
 	// - repeat initialize()
-	t.Err(initialize(loc), errors.New("version already initialized at "+tempdir+"/.version"))
+	t.Match(initialize(loc), `version already initialized at .*/.version`)
 	cleanup(t, tempdir)
 }
 
@@ -91,18 +91,15 @@ func TestNew(tt *testing.T) {
 	loc, err := url.Parse(tempdir)
 	t.Nil(err)
 
-	_, err = new(loc)
-	t.Err(err, errors.New("version is not initialized at "+tempdir+"/.version"))
-
 	// - after initialize() (success)
-	t.Nil(initialize(loc))
+	v, err := newInitializedStorage(loc)
 	defer cleanup(t, tempdir)
-	_, err = new(loc)
-	t.Err(err, nil)
+	t.Nil(err)
+	t.Nil(v.Close())
 }
 
 func testLock(name string, loc *url.URL, unlockc chan struct{}, statusc chan string) {
-	v, err := new(loc)
+	v, err := newInitializedStorage(loc)
 	if err != nil {
 		panic(err)
 	}
@@ -263,10 +260,9 @@ func TestGetNone(tt *testing.T) {
 	defer func() { t.Nil(os.Remove(tempdir)) }()
 	loc, err := url.Parse("file://" + tempdir)
 	t.Nil(err)
-	t.Nil(initialize(loc))
-	defer cleanup(t, tempdir)
-	p, err := new(loc)
+	p, err := newInitializedStorage(loc)
 	t.Nil(err)
+	defer cleanup(t, tempdir)
 
 	t.Equal(p.Get(), "none")
 	t.Equal(p.Get(), "none")
@@ -280,10 +276,9 @@ func TestSet(tt *testing.T) {
 	defer func() { t.Nil(os.Remove(tempdir)) }()
 	loc, err := url.Parse("file://" + tempdir)
 	t.Nil(err)
-	t.Nil(initialize(loc))
-	defer cleanup(t, tempdir)
-	p, err := new(loc)
+	p, err := newInitializedStorage(loc)
 	t.Nil(err)
+	defer cleanup(t, tempdir)
 
 	// - Set("") panics
 	t.PanicMatch(func() { p.Set("") }, `no such file or directory`)

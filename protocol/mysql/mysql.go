@@ -22,8 +22,9 @@ CREATE TABLE Narada4D (
 )
 SELECT "version" as var, "none" as val
 `
-	sqlSharedLock    = `LOCK TABLE Narada4D READ`
-	sqlExclusiveLock = `LOCK TABLE Narada4D WRITE`
+	sqlInitialized   = `SELECT COUNT(*) FROM Narada4D`
+	sqlSharedLock    = `LOCK TABLES Narada4D READ`
+	sqlExclusiveLock = `LOCK TABLES Narada4D WRITE`
 	sqlUnlock        = `UNLOCK TABLES`
 	sqlGetVersion    = `SELECT val FROM Narada4D WHERE var='version'`
 	sqlSetVersion    = `UPDATE Narada4D SET val=? WHERE var='version'`
@@ -37,11 +38,53 @@ type storage struct {
 func init() {
 	schemaver.RegisterProtocol("mysql", schemaver.Backend{
 		Initialize: initialize,
-		New:        new,
+		New:        newInitializedStorage,
 	})
 }
 
-func connect(loc *url.URL) (*storage, error) {
+func validate(loc *url.URL) error {
+	switch {
+	case loc.User == nil || loc.User.Username() == "":
+		return errors.New("username absent, require mysql://username[:password]@host[:port]/database")
+	case loc.Host == "":
+		return errors.New("host absent, require mysql://username[:password]@host[:port]/database")
+	case loc.Path == "" || loc.Path == "/":
+		return errors.New("database absent, require mysql://username[:password]@host[:port]/database")
+	case loc.RawQuery != "" || loc.Fragment != "":
+		return errors.New("unexpected query params or fragment, require mysql://username[:password]@host[:port]/database")
+	default:
+		return nil
+	}
+}
+
+func initialize(loc *url.URL) error {
+	s, err := newStorage(loc)
+	if err != nil {
+		return err
+	}
+	defer s.Close() //nolint:errcheck // Defer.
+
+	if s.initialized() {
+		return errors.New("already initialized")
+	}
+	return s.init()
+}
+
+func newInitializedStorage(loc *url.URL) (schemaver.Manage, error) {
+	s, err := newStorage(loc)
+	if err != nil {
+		return nil, err
+	}
+	if !s.initialized() {
+		if err := s.init(); err != nil {
+			_ = s.Close()
+			return nil, err
+		}
+	}
+	return s, nil
+}
+
+func newStorage(loc *url.URL) (*storage, error) {
 	err := validate(loc)
 	if err != nil {
 		return nil, err
@@ -66,42 +109,28 @@ func connect(loc *url.URL) (*storage, error) {
 	cfg.ParseTime = true
 	cfg.RejectReadOnly = true
 
-	s := &storage{}
-	s.db, err = sql.Open("mysql", cfg.FormatDSN())
+	db, err := sql.Open("mysql", cfg.FormatDSN())
 	if err != nil {
 		return nil, err
 	}
-	err = s.db.Ping()
-	return s, err
-}
-
-func validate(loc *url.URL) error {
-	switch {
-	case loc.User == nil || loc.User.Username() == "":
-		return errors.New("username absent, require mysql://username[:password]@host[:port]/database")
-	case loc.Host == "":
-		return errors.New("host absent, require mysql://username[:password]@host[:port]/database")
-	case loc.Path == "" || loc.Path == "/":
-		return errors.New("database absent, require mysql://username[:password]@host[:port]/database")
-	case loc.RawQuery != "" || loc.Fragment != "":
-		return errors.New("unexpected query params or fragment, require mysql://username[:password]@host[:port]/database")
-	default:
-		return nil
-	}
-}
-
-func initialize(loc *url.URL) error {
-	s, err := connect(loc)
+	err = db.Ping()
 	if err != nil {
-		return err
+		_ = db.Close()
+		return nil, err
 	}
-	defer s.db.Close() //nolint:errcheck // Defer.
-	_, err = s.db.Exec(sqlCreateTable)
-	return err
+
+	return &storage{db: db}, nil
 }
 
-func new(loc *url.URL) (schemaver.Manage, error) {
-	return connect(loc)
+func (s *storage) initialized() bool {
+	var count int
+	_ = s.db.QueryRow(sqlInitialized).Scan(&count)
+	return count > 0
+}
+
+func (s *storage) init() error {
+	_, err := s.db.Exec(sqlCreateTable)
+	return err
 }
 
 func (s *storage) SharedLock() {

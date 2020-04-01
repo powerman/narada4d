@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	// NoVersion will be set as version value by Initialize.
+	// NoVersion will be set as version value while initialization.
 	NoVersion = "none"
 	// BadVersion must be set as version value in case data schema may
 	// be incorrect (as result of interrupted migration or restoring
@@ -65,14 +65,14 @@ type SchemaVer struct {
 // New creates object for managing data schema version at location
 // provided in $NARADA4D.
 //
-// Version must be already initialized.
+// Will initialize version if it's not initialized yet.
 func New() (*SchemaVer, error) {
 	return NewAt(os.Getenv(EnvLocation))
 }
 
 // NewAt creates object for managing data schema version at location.
 //
-// Version must be already initialized.
+// Will initialize version if it's not initialized yet.
 func NewAt(location string) (*SchemaVer, error) {
 	loc, err := parseLocation(location)
 	if err != nil {
