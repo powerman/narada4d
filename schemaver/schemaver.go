@@ -2,10 +2,12 @@
 package schemaver
 
 import (
+	"context"
 	"fmt"
 	"net/url"
 	"os"
 	"sync"
+	"time"
 )
 
 const (
@@ -61,6 +63,8 @@ type SchemaVer struct {
 	skipUnlock int
 	sharedVer  string
 	callbacks  []func(string)
+	holdWG     sync.WaitGroup
+	holdQuit   chan struct{}
 }
 
 // New creates object for managing data schema version at location
@@ -85,13 +89,45 @@ func NewAt(location string) (*SchemaVer, error) {
 	}
 
 	v := &SchemaVer{
-		backend: backend,
+		backend:  backend,
+		holdQuit: make(chan struct{}),
 	}
 	if os.Getenv(EnvSkipLock) != "" {
 		v.lockType = exclusive
 	}
 
 	return v, nil
+}
+
+// HoldSharedLock will start goroutine which will acquire SharedLock and
+// keep it until Close or ctx.Done. It'll release and immediately
+// re-acquire SharedLock every relockEvery to give someone else a chance
+// to get ExclusiveLock.
+//
+// This is recommended optimization in case you've to do a lot of
+// short-living SharedLock every second.
+func (v *SchemaVer) HoldSharedLock(ctx context.Context, relockEvery time.Duration) {
+	v.holdWG.Add(1)
+	go func() {
+		hold := true
+		select {
+		case <-v.holdQuit:
+			hold = false
+		default:
+		}
+		for hold {
+			v.SharedLock()
+			select {
+			case <-time.After(relockEvery):
+			case <-ctx.Done():
+				hold = false
+			case <-v.holdQuit:
+				hold = false
+			}
+			v.Unlock()
+		}
+		v.holdWG.Done()
+	}()
 }
 
 // SharedLock acquire shared lock and return current version.
@@ -221,6 +257,9 @@ func (v *SchemaVer) AddCallback(callback func(string)) {
 //
 // No other methods should be called after Close.
 func (v *SchemaVer) Close() error {
+	close(v.holdQuit)
+	v.holdWG.Wait()
+
 	v.mu.Lock()
 	defer v.mu.Unlock()
 	return v.backend.Close()

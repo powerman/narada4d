@@ -1,13 +1,22 @@
 package schemaver_test
 
 import (
+	"context"
 	"errors"
 	"net/url"
 	"os"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/powerman/check"
+	"github.com/powerman/getenv"
 	"github.com/powerman/narada4d/schemaver"
+)
+
+var (
+	testTimeFactor = getenv.Float("GO_TEST_TIME_FACTOR", 1.0)
+	testSecond     = time.Duration(float64(time.Second) * testTimeFactor)
 )
 
 func init() {
@@ -250,6 +259,51 @@ func TestRecursiveLocks(tt *testing.T) {
 	t.PanicMatch(func() { v.ExclusiveLock() }, `unable to acquire exclusive lock under shared lock`)
 }
 
+func TestHoldSharedLock(tt *testing.T) {
+	t := check.T(tt)
+	reset()
+
+	os.Setenv(schemaver.EnvLocation, "test://")
+	v, err := schemaver.New()
+	t.Nil(err)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	v.HoldSharedLock(ctx, testSecond/10)
+	time.Sleep(testSecond / 2)
+	mu.Lock()
+	t.Between(sh, 3, 7)
+	mu.Unlock()
+	cancel()
+	time.Sleep(testSecond / 2)
+	mu.Lock()
+	t.Between(sh, 3, 7)
+	mu.Unlock()
+	t.Nil(v.Close())
+}
+
+func TestHoldSharedLock2(tt *testing.T) {
+	t := check.T(tt)
+	reset()
+
+	os.Setenv(schemaver.EnvLocation, "test://")
+	v, err := schemaver.New()
+	t.Nil(err)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	v.HoldSharedLock(ctx, testSecond/10)
+	v.HoldSharedLock(context.Background(), testSecond/10)
+	time.Sleep(testSecond / 2)
+	mu.Lock()
+	t.Between(sh, 0, 8)
+	mu.Unlock()
+	cancel()
+	time.Sleep(testSecond / 2)
+	mu.Lock()
+	t.Between(sh, 5, 13)
+	mu.Unlock()
+	t.Nil(v.Close())
+}
+
 func TestAddCallback(tt *testing.T) {
 	t := check.T(tt)
 	reset()
@@ -330,6 +384,7 @@ var (
 	errBadLocation = errors.New("location must not contain host")
 	errInitialized = errors.New("version already initialized")
 	errInvalid     = errors.New("version is invalid")
+	mu             sync.Mutex
 	sh, ex, un     int
 	ver            string
 )
@@ -362,9 +417,9 @@ func mockNew(loc *url.URL) (schemaver.Manage, error) {
 
 type mockManage struct{}
 
-func (m *mockManage) SharedLock()    { sh++ }
-func (m *mockManage) ExclusiveLock() { ex++ }
-func (m *mockManage) Unlock()        { un++ }
+func (m *mockManage) SharedLock()    { mu.Lock(); sh++; mu.Unlock() }
+func (m *mockManage) ExclusiveLock() { mu.Lock(); ex++; mu.Unlock() }
+func (m *mockManage) Unlock()        { mu.Lock(); un++; mu.Unlock() }
 func (m *mockManage) Get() string    { return ver }
 func (m *mockManage) Set(v string)   { ver = v }
 func (m *mockManage) Close() error   { return nil }
