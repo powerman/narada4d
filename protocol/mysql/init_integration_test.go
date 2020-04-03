@@ -39,7 +39,7 @@ func setupIntegration() {
 	}
 	dbCfg.Timeout = 3 * testSecond
 
-	dbCfg, cleanup, err := mysqlx.EnsureTempDB(logger, testDBSuffix, *dbCfg)
+	dbCfg, cleanup, err := mysqlx.EnsureTempDB(logger, testDBSuffix, dbCfg)
 	if err != nil {
 		testinit.Fatal(err)
 	}
