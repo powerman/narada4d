@@ -11,7 +11,7 @@ require (
 	github.com/powerman/goose v2.7.0-rc4.0.20200329145851-5c15923690fa+incompatible
 	github.com/powerman/gotest v0.3.0
 	github.com/powerman/must v0.1.0
-	github.com/powerman/mysqlx v0.2.0
+	github.com/powerman/mysqlx v0.3.2
 	github.com/powerman/pqx v0.6.1
 	github.com/smartystreets/assertions v1.0.1 // indirect
 	golang.org/x/sys v0.0.0-20200331124033-c3d80250170d // indirect
