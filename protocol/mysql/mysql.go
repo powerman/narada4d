@@ -166,9 +166,6 @@ func (s *storage) Unlock() {
 }
 
 func (s *storage) Get() string {
-	if s.tx == nil {
-		panic("not locked")
-	}
 	var version string
 	err := s.tx.QueryRow(sqlGetVersion).Scan(&version)
 	must.PanicIf(err)
@@ -178,9 +175,6 @@ func (s *storage) Get() string {
 var reVersion = regexp.MustCompile(`\A(?:none|dirty|\d+(?:[.]\d+)*)\z`) //nolint:gochecknoglobals // Regexp.
 
 func (s *storage) Set(ver string) {
-	if s.tx == nil {
-		panic("not locked")
-	}
 	if reVersion.MatchString(ver) {
 		_, err := s.tx.Exec(sqlSetVersion, ver)
 		must.PanicIf(err)

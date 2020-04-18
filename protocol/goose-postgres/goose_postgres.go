@@ -125,9 +125,6 @@ func (s *storage) Unlock() {
 }
 
 func (s *storage) Get() string {
-	if s.tx == nil {
-		panic("not locked")
-	}
 	v, err := goose.EnsureDBVersion(s.db)
 	must.PanicIf(err)
 	if v == 0 {

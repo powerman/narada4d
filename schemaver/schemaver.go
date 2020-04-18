@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"strings"
 	"sync"
 	"time"
 )
@@ -57,6 +58,7 @@ const (
 
 // SchemaVer manage data schema versions.
 type SchemaVer struct {
+	loc        *url.URL
 	backend    Manage
 	mu         sync.Mutex
 	lockType   lockType
@@ -89,14 +91,78 @@ func NewAt(location string) (*SchemaVer, error) {
 	}
 
 	v := &SchemaVer{
+		loc:      loc,
 		backend:  backend,
 		holdQuit: make(chan struct{}),
 	}
-	if os.Getenv(EnvSkipLock) != "" {
+	if v.isSkipLock() {
 		v.lockType = exclusive
 	}
 
 	return v, nil
+}
+
+//nolint:gochecknoglobals // By design.
+var muEnv sync.Mutex
+
+func (v *SchemaVer) isSkipLock() bool {
+	muEnv.Lock()
+	defer muEnv.Unlock()
+
+	envs := strings.Fields(os.Getenv(EnvSkipLock))
+	if len(envs) == 0 {
+		return false
+	}
+	if _, err := parseLocation(envs[0]); err != nil {
+		return true // For compatibility with NARADA4D_SKIP_LOCK=1 used before.
+	}
+	for i := range envs {
+		if loc, err := parseLocation(envs[i]); err == nil && loc.String() == v.loc.String() {
+			return true
+		}
+	}
+	return false
+}
+
+func (v *SchemaVer) setSkipLock() {
+	muEnv.Lock()
+	defer muEnv.Unlock()
+
+	envs := strings.Fields(os.Getenv(EnvSkipLock))
+	for i := range envs {
+		if loc, err := parseLocation(envs[i]); err == nil && loc.String() == v.loc.String() {
+			return
+		}
+	}
+
+	envs = append(envs, v.loc.String())
+	err := os.Setenv(EnvSkipLock, strings.Join(envs, " "))
+	if err != nil {
+		panic(err)
+	}
+}
+
+func (v *SchemaVer) unsetSkipLock() {
+	muEnv.Lock()
+	defer muEnv.Unlock()
+
+	envs := strings.Fields(os.Getenv(EnvSkipLock))
+	for i := len(envs) - 1; i >= 0; i-- {
+		if loc, err := parseLocation(envs[i]); err == nil && loc.String() == v.loc.String() {
+			copy(envs[i:], envs[i+1:])
+			envs = envs[:len(envs)-1]
+		}
+	}
+
+	var err error
+	if len(envs) > 0 {
+		err = os.Setenv(EnvSkipLock, strings.Join(envs, " "))
+	} else {
+		err = os.Unsetenv(EnvSkipLock)
+	}
+	if err != nil {
+		panic(err)
+	}
 }
 
 // HoldSharedLock will start goroutine which will acquire SharedLock and
@@ -175,9 +241,7 @@ func (v *SchemaVer) ExclusiveLock() string {
 	default:
 		v.backend.ExclusiveLock()
 		v.lockType = exclusive
-		if err := os.Setenv(EnvSkipLock, "1"); err != nil {
-			panic(err)
-		}
+		v.setSkipLock()
 	}
 
 	ver := v.backend.Get()
@@ -204,9 +268,7 @@ func (v *SchemaVer) Unlock() {
 	} else {
 		v.backend.Unlock()
 		v.lockType = unlocked
-		if err := os.Unsetenv(EnvSkipLock); err != nil {
-			panic(err)
-		}
+		v.unsetSkipLock()
 	}
 }
 

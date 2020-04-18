@@ -60,7 +60,9 @@ should be compatible and keep your data safe.
 - Environment variable `$NARADA4D_SKIP_LOCK` must be set to non-empty
   string when exclusive lock was acquired, and if it's set then next
   attempt to acquire and then release shared or exclusive lock shouldn't
-  do anything.
+  do anything. It's recommended to set it to space-separated list of
+  URLs to data schema version - in this case exclusive lock won't do
+  anything only if one of these URLs will match URL we're locking.
     - *Rationale:* Needed to support recursive locking, needed in case
       when one tool (migrate) runs other tools (backup or restore).
 - Version of data schema must be a string which is either `none` or
