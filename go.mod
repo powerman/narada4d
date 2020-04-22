@@ -5,7 +5,7 @@ go 1.13
 require (
 	github.com/go-sql-driver/mysql v1.5.0
 	github.com/gopherjs/gopherjs v0.0.0-20200217142428-fce0ec30dd00 // indirect
-	github.com/lib/pq v1.3.0
+	github.com/lib/pq v1.4.0
 	github.com/powerman/check v1.2.1
 	github.com/powerman/getenv v0.1.0
 	github.com/powerman/goose v2.7.0-rc4.0.20200329145851-5c15923690fa+incompatible
