@@ -67,6 +67,8 @@ github.com/powerman/mysqlx v0.2.0 h1:A3UVKIdTujfFnRiFbjFcj1rnkcnmFrFdtoSUS9Z2EcY
 github.com/powerman/mysqlx v0.2.0/go.mod h1:ZSl17PWU2DgwM2KjN8OrdAq9tYC5p4Xm3lTN6W7j3SA=
 github.com/powerman/mysqlx v0.3.2 h1:OnRrIVR44wbdfaJqlgD6XoLN4sxMSdaCUUHtNno4VT4=
 github.com/powerman/mysqlx v0.3.2/go.mod h1:ZSl17PWU2DgwM2KjN8OrdAq9tYC5p4Xm3lTN6W7j3SA=
+github.com/powerman/mysqlx v0.3.3 h1:eBTeJvrLY+mcacJZekzM3VKCUT8gj/5KKG8f2KYXqzg=
+github.com/powerman/mysqlx v0.3.3/go.mod h1:ZSl17PWU2DgwM2KjN8OrdAq9tYC5p4Xm3lTN6W7j3SA=
 github.com/powerman/pqx v0.6.1 h1:tlFOKQvVTiWG3FCb1jmGUzxcNzw7Ep1K5KBbSa5If/g=
 github.com/powerman/pqx v0.6.1/go.mod h1:EJGFN0+vvTWFqwT1bTrnVWrJ8hO7RAW6rp2JVhYwrVE=
 github.com/smartystreets/assertions v0.0.0-20180927180507-b2de0cb4f26d/go.mod h1:OnSkiWE9lh6wB0YB77sQom3nweQdgAjqCqsofrRNTgc=
