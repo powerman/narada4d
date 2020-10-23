@@ -8,9 +8,13 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/cenkalti/backoff/v4"
+	"github.com/go-sql-driver/mysql"
 	_ "github.com/go-sql-driver/mysql" // Driver.
 	"github.com/powerman/goose"
 	"github.com/powerman/must"
+
+	"github.com/powerman/narada4d/internal"
 	"github.com/powerman/narada4d/schemaver"
 )
 
@@ -116,22 +120,34 @@ func (s *storage) SharedLock() {
 	if s.tx != nil {
 		panic("already locked")
 	}
-	var err error
-	s.tx, err = s.db.Begin()
-	must.PanicIf(err)
-	_, err = s.tx.Exec(sqlSharedLock)
-	must.PanicIf(err)
+	op := func() (err error) {
+		s.tx, err = s.db.Begin()
+		if err == nil {
+			_, err = s.tx.Exec(sqlSharedLock)
+		}
+		if errors.As(err, new(*mysql.MySQLError)) { // Retry on network errors.
+			err = backoff.Permanent(err)
+		}
+		return err
+	}
+	must.PanicIf(backoff.Retry(op, internal.NewBackOff()))
 }
 
 func (s *storage) ExclusiveLock() {
 	if s.tx != nil {
 		panic("already locked")
 	}
-	var err error
-	s.tx, err = s.db.Begin()
-	must.PanicIf(err)
-	_, err = s.tx.Exec(sqlExclusiveLock)
-	must.PanicIf(err)
+	op := func() (err error) {
+		s.tx, err = s.db.Begin()
+		if err == nil {
+			_, err = s.tx.Exec(sqlExclusiveLock)
+		}
+		if errors.As(err, new(*mysql.MySQLError)) { // Retry on network errors.
+			err = backoff.Permanent(err)
+		}
+		return err
+	}
+	must.PanicIf(backoff.Retry(op, internal.NewBackOff()))
 }
 
 func (s *storage) Unlock() {
@@ -139,9 +155,14 @@ func (s *storage) Unlock() {
 		panic("not locked")
 	}
 	_, err := s.tx.Exec(sqlUnlock)
-	must.PanicIf(err)
-	must.PanicIf(s.tx.Commit())
+	if err == nil {
+		err = s.tx.Commit()
+	}
 	s.tx = nil
+	if err != nil && !errors.As(err, new(*mysql.MySQLError)) { // Ignore network errors.
+		err = nil
+	}
+	must.PanicIf(err)
 }
 
 func (s *storage) Get() string {

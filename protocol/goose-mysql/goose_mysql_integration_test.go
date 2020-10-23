@@ -4,8 +4,11 @@ package goosemysql
 
 import (
 	"testing"
+	"time"
 
 	"github.com/powerman/check"
+
+	"github.com/powerman/narada4d/internal"
 )
 
 func TestInitialize(tt *testing.T) {
@@ -162,5 +165,36 @@ func TestSet(tt *testing.T) {
 
 	v.ExclusiveLock()
 	t.PanicMatch(func() { v.Set("42") }, `not supported`)
+	v.Unlock()
+}
+
+func TestReconnect(tt *testing.T) {
+	t := check.T(tt)
+
+	v, err := newInitializedStorage(loc)
+	t.Nil(err)
+	defer dropTable(t)
+	defer v.Close()
+
+	restartProxy := func() {
+		proxy.Close()
+		t.Nil(internal.WaitTCPPortClosed(ctx, proxy.FrontendAddr()))
+		go func() {
+			var err error
+			time.Sleep(time.Second)
+			proxy, err = internal.NewTCPProxy(ctx, proxy.FrontendAddr().String(), proxy.BackendAddr().String())
+			t.Nil(err)
+		}()
+	}
+
+	v.SharedLock()
+	restartProxy()
+	t.NotPanic(v.Unlock)
+
+	t.NotPanic(v.SharedLock)
+	v.Unlock()
+
+	restartProxy()
+	t.NotPanic(v.ExclusiveLock)
 	v.Unlock()
 }
