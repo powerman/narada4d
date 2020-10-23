@@ -41,28 +41,26 @@ func setupIntegration() {
 	}
 	loc.Scheme = "goose-mysql"
 
+	ctx, cancel := context.WithTimeout(ctx, 7*testSecond)
+	defer cancel()
+	proxy, err = internal.NewTCPProxy(ctx, "127.0.0.1:0", loc.Host)
+	if err != nil {
+		testinit.Fatal("failed to NewTCPProxy: ", err)
+	}
+	testinit.Teardown(func() { proxy.Close() })
+	loc.Host = proxy.FrontendAddr().String()
+
 	dbCfg, err := mysql.ParseDSN(dsn(loc))
 	if err != nil {
 		testinit.Fatal("failed to parse $NARADA4D_TEST_MYSQL as DSN: ", err)
 	}
 	dbCfg.Timeout = 3 * testSecond
 
-	ctx, cancel := context.WithTimeout(ctx, 7*testSecond)
-	defer cancel()
-	proxy, err = internal.NewTCPProxy(ctx, "127.0.0.1:0", dbCfg.Addr)
-	if err != nil {
-		testinit.Fatal("failed to NewTCPProxy: ", err)
-	}
-	testinit.Teardown(func() { proxy.Close() })
-	dbCfg.Addr = proxy.FrontendAddr().String()
-
 	dbCfg, cleanup, err := mysqlx.EnsureTempDB(logger, testDBSuffix, dbCfg)
 	if err != nil {
 		testinit.Fatal(err)
 	}
 	testinit.Teardown(cleanup)
-
-	loc.Host = dbCfg.Addr
 	loc.Path = "/" + dbCfg.DBName
 }
 
