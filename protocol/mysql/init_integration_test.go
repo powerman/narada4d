@@ -3,16 +3,20 @@
 package mysql
 
 import (
+	"context"
 	"log"
 	"net/url"
 	"os"
 	"strings"
 	"time"
 
+	proxypkg "github.com/docker/go-connections/proxy"
 	"github.com/go-sql-driver/mysql"
 	"github.com/powerman/check"
 	"github.com/powerman/gotest/testinit"
 	"github.com/powerman/mysqlx"
+
+	"github.com/powerman/narada4d/internal"
 )
 
 const (
@@ -20,7 +24,10 @@ const (
 	sqlDropTable = "DROP TABLE Narada4D"
 )
 
-var loc *url.URL
+var (
+	loc   *url.URL
+	proxy *proxypkg.TCPProxy
+)
 
 func init() { testinit.Setup(2, setupIntegration) }
 
@@ -39,12 +46,22 @@ func setupIntegration() {
 	}
 	dbCfg.Timeout = 3 * testSecond
 
+	ctx, cancel := context.WithTimeout(ctx, 7*testSecond)
+	defer cancel()
+	proxy, err = internal.NewTCPProxy(ctx, "127.0.0.1:0", dbCfg.Addr)
+	if err != nil {
+		testinit.Fatal("failed to NewTCPProxy: ", err)
+	}
+	testinit.Teardown(func() { proxy.Close() })
+	dbCfg.Addr = proxy.FrontendAddr().String()
+
 	dbCfg, cleanup, err := mysqlx.EnsureTempDB(logger, testDBSuffix, dbCfg)
 	if err != nil {
 		testinit.Fatal(err)
 	}
 	testinit.Teardown(cleanup)
 
+	loc.Host = dbCfg.Addr
 	loc.Path = "/" + dbCfg.DBName
 }
 

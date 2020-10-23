@@ -8,8 +8,11 @@ import (
 	"net/url"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/powerman/check"
+
+	"github.com/powerman/narada4d/internal"
 )
 
 func TestConnect(tt *testing.T) {
@@ -70,6 +73,7 @@ func TestInitialized(tt *testing.T) {
 
 	s, err := newStorage(loc)
 	t.Nil(err)
+	defer s.Close()
 
 	//- Not initialized()
 	t.False(s.initialized())
@@ -183,8 +187,10 @@ func TestNotInitialized(tt *testing.T) {
 
 	s, err := newStorage(loc)
 	t.Nil(err)
+	defer s.Close()
 
 	t.PanicMatch(func() { s.SharedLock() }, `doesn't exist`)
+	defer s.tx.Rollback()
 }
 
 func TestGet(tt *testing.T) {
@@ -193,6 +199,7 @@ func TestGet(tt *testing.T) {
 	v, err := newInitializedStorage(loc)
 	t.Nil(err)
 	defer dropTable(t)
+	defer v.Close()
 
 	v.SharedLock()
 	t.Equal(v.Get(), "none")
@@ -202,9 +209,10 @@ func TestGet(tt *testing.T) {
 func TestSet(tt *testing.T) {
 	t := check.T(tt)
 
-	c, err := newInitializedStorage(loc)
+	v, err := newInitializedStorage(loc)
 	t.Nil(err)
 	defer dropTable(t)
+	defer v.Close()
 
 	cases := []struct {
 		val       string
@@ -225,15 +233,46 @@ func TestSet(tt *testing.T) {
 		{"43.0.1", false},
 	}
 
-	c.ExclusiveLock()
-	defer c.Unlock()
-	for _, v := range cases {
-		v := v
-		if v.wantpanic {
-			t.PanicMatch(func() { c.Set(v.val) }, `invalid version value, require 'none' or 'dirty' or one or more digits separated with single dots`)
+	v.ExclusiveLock()
+	defer v.Unlock()
+	for _, tc := range cases {
+		tc := tc
+		if tc.wantpanic {
+			t.PanicMatch(func() { v.Set(tc.val) }, `invalid version value, require 'none' or 'dirty' or one or more digits separated with single dots`)
 		} else {
-			t.NotPanic(func() { c.Set(v.val) })
-			t.Equal(c.Get(), v.val)
+			t.NotPanic(func() { v.Set(tc.val) })
+			t.Equal(v.Get(), tc.val)
 		}
 	}
+}
+
+func TestReconnect(tt *testing.T) {
+	t := check.T(tt)
+
+	v, err := newInitializedStorage(loc)
+	t.Nil(err)
+	defer dropTable(t)
+	defer v.Close()
+
+	restartProxy := func() {
+		proxy.Close()
+		t.Nil(internal.WaitTCPPortClosed(ctx, proxy.FrontendAddr()))
+		go func() {
+			var err error
+			time.Sleep(time.Second)
+			proxy, err = internal.NewTCPProxy(ctx, proxy.FrontendAddr().String(), proxy.BackendAddr().String())
+			t.Nil(err)
+		}()
+	}
+
+	v.SharedLock()
+	restartProxy()
+	t.NotPanic(v.Unlock)
+
+	t.NotPanic(v.SharedLock)
+	v.Unlock()
+
+	restartProxy()
+	t.NotPanic(v.ExclusiveLock)
+	v.Unlock()
 }
