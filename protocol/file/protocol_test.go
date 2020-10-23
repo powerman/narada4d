@@ -1,7 +1,6 @@
 package file
 
 import (
-	"errors"
 	"io/ioutil"
 	"net/url"
 	"os"
@@ -20,10 +19,10 @@ func TestBadLocation(tt *testing.T) {
 		path    string
 		wanterr error
 	}{
-		{"file://user@/", errors.New("location must contain only path")},
-		{"file://localhost/", errors.New("location must contain only path")},
-		{"file:///?a=1", errors.New("location must contain only path")},
-		{"file:///#a", errors.New("location must contain only path")},
+		{"file://user@/", errLocationInvalid},
+		{"file://localhost/", errLocationInvalid},
+		{"file:///?a=1", errLocationInvalid},
+		{"file:///#a", errLocationInvalid},
 	}
 
 	for _, v := range cases {
@@ -42,23 +41,23 @@ func TestInitialize(tt *testing.T) {
 	tempdir, err := ioutil.TempDir("", "gotest")
 	t.Nil(err)
 	defer func() { t.Nil(os.Remove(tempdir)) }()
-	t.Nil(os.Chmod(tempdir, 0555))
+	t.Nil(os.Chmod(tempdir, 0o555))
 	loc, err := url.Parse(tempdir)
 	t.Nil(err)
 
 	t.Err(initialize(loc), syscall.EACCES)
 
 	// - file:///path/to/dir/with/subdir/.lock/
-	t.Nil(os.Chmod(tempdir, 0755))
+	t.Nil(os.Chmod(tempdir, 0o755))
 	lpath := tempdir + "/.lock"
-	t.Nil(os.Mkdir(lpath, 0755))
+	t.Nil(os.Mkdir(lpath, 0o755))
 
 	t.Err(initialize(loc), syscall.EISDIR)
 	t.Nil(os.Remove(lpath))
 
 	// - file:///path/to/dir;/with/subdir/.lock.queue/
 	lqpath := tempdir + "/.lock.queue"
-	t.Nil(os.Mkdir(lqpath, 0755))
+	t.Nil(os.Mkdir(lqpath, 0o755))
 
 	t.Err(initialize(loc), syscall.EISDIR)
 	t.Nil(os.Remove(lqpath))
@@ -66,7 +65,7 @@ func TestInitialize(tt *testing.T) {
 
 	// - file:///path/to/dir/with/subdir/.version/
 	vpath := tempdir + "/.version"
-	t.Nil(os.Mkdir(vpath, 0755))
+	t.Nil(os.Mkdir(vpath, 0o755))
 
 	t.Err(initialize(loc), syscall.EEXIST)
 	t.Nil(os.Remove(lpath))
@@ -77,7 +76,7 @@ func TestInitialize(tt *testing.T) {
 	t.Err(initialize(loc), nil)
 
 	// - repeat initialize()
-	t.Match(initialize(loc), `version already initialized at .*/.version`)
+	t.Match(initialize(loc), `version is already initialized at .*/.version`)
 	cleanup(t, tempdir)
 }
 
@@ -128,7 +127,7 @@ func testLock(name string, loc *url.URL, unlockc chan struct{}, statusc chan str
 	v.Unlock()
 }
 
-// - EX1, UN1, EX2, UN2
+// - EX1, UN1, EX2, UN2.
 func TestExSequence(tt *testing.T) {
 	t := check.T(tt)
 
@@ -151,7 +150,7 @@ func TestExSequence(tt *testing.T) {
 	un2 <- struct{}{}
 }
 
-// - EX1, EX2 (block), UN1, (unblock EX2), UN2
+// - EX1, EX2 (block), UN1, (unblock EX2), UN2.
 func TestExParallel(tt *testing.T) {
 	t := check.T(tt)
 
@@ -175,7 +174,7 @@ func TestExParallel(tt *testing.T) {
 	un2 <- struct{}{}
 }
 
-// - EX1, SH2 (block), UN1, (unblock SH2), UN2
+// - EX1, SH2 (block), UN1, (unblock SH2), UN2.
 func TestExShParallel(tt *testing.T) {
 	t := check.T(tt)
 
@@ -199,7 +198,7 @@ func TestExShParallel(tt *testing.T) {
 	un2 <- struct{}{}
 }
 
-// - SH1, SH2, UN1, UN2
+// - SH1, SH2, UN1, UN2.
 func TestShParallel(tt *testing.T) {
 	t := check.T(tt)
 
@@ -222,7 +221,7 @@ func TestShParallel(tt *testing.T) {
 	un2 <- struct{}{}
 }
 
-// - SH1, EX2 (block), SH3 (block), UN1, (unblock EX2), UN2, (unblock SH3), UN3
+// - SH1, EX2 (block), SH3 (block), UN1, (unblock EX2), UN2, (unblock SH3), UN3.
 func TestExPriority(tt *testing.T) {
 	t := check.T(tt)
 
@@ -251,7 +250,7 @@ func TestExPriority(tt *testing.T) {
 	un3 <- struct{}{}
 }
 
-// - Get = "none", Get = "none"
+// - Get = "none", Get = "none".
 func TestGetNone(tt *testing.T) {
 	t := check.T(tt)
 

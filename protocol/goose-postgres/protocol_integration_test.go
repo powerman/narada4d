@@ -1,63 +1,15 @@
 // +build integration
 
-package mysql
+package goosepostgres
 
 import (
-	"errors"
-	"fmt"
-	"net/url"
-	"strings"
 	"testing"
+	"time"
 
 	"github.com/powerman/check"
+
+	"github.com/powerman/narada4d/internal"
 )
-
-func TestConnect(tt *testing.T) {
-	t := check.T(tt)
-
-	var (
-		dbUser    = loc.User.Username()
-		dbPass, _ = loc.User.Password()
-		dbHost    = loc.Hostname()
-		dbPort    = loc.Port()
-		dbName    = strings.TrimPrefix(loc.Path, "/")
-	)
-
-	require := "require mysql://username[:password]@host[:port]/database"
-	cases := []struct {
-		url     string
-		wanterr error
-	}{
-		{fmt.Sprintf("mysql://%s:%s@%s:%s/%s", dbUser, dbPass, dbHost, dbPort, dbName), nil},
-		{fmt.Sprintf("mysql://%s:%s@%s:%s/", dbUser, dbPass, dbHost, dbPort), errors.New("database absent, " + require)},
-		{fmt.Sprintf("mysql://%s:%s@%s:%s", dbUser, dbPass, dbHost, dbPort), errors.New("database absent, " + require)},
-		{fmt.Sprintf("mysql://%s:%s@/%s", dbUser, dbPass, dbName), errors.New("host absent, " + require)},
-		{fmt.Sprintf("mysql://:%s@%s:%s/%s", dbPass, dbHost, dbPort, dbName), errors.New("username absent, " + require)},
-		{fmt.Sprintf("mysql://%s:%s@%s:%s/%s?a=3", dbUser, dbPass, dbHost, dbPort, dbName), errors.New("unexpected query params or fragment, " + require)},
-		{fmt.Sprintf("mysql://%s:%s@%s:%s/%s#a", dbUser, dbPass, dbHost, dbPort, dbName), errors.New("unexpected query params or fragment, " + require)},
-		{"mysql://", errors.New("username absent, " + require)},
-	}
-
-	for _, v := range cases {
-		p, err := url.Parse(v.url)
-		t.Nil(err)
-		s, err := newStorage(p)
-		t.Err(err, v.wanterr)
-		if v.wanterr == nil {
-			s.Close()
-		}
-	}
-
-	p, err := url.Parse(fmt.Sprintf("mysql://incUserName:%s@%s:%s/%s", dbPass, dbHost, dbPort, dbName))
-	t.Nil(err)
-	_, err = newStorage(p)
-	t.Match(err, `Access denied`)
-
-	p, err = url.Parse(fmt.Sprintf("mysql://%s:incPass@%s:%s/%s", dbUser, dbHost, dbPort, dbName))
-	t.Nil(err)
-	_, err = newStorage(p)
-	t.Match(err, `Access denied`)
-}
 
 func TestInitialize(tt *testing.T) {
 	t := check.T(tt)
@@ -70,6 +22,7 @@ func TestInitialized(tt *testing.T) {
 
 	s, err := newStorage(loc)
 	t.Nil(err)
+	defer s.Close()
 
 	//- Not initialized()
 	t.False(s.initialized())
@@ -80,7 +33,7 @@ func TestInitialized(tt *testing.T) {
 	dropTable(t)
 }
 
-// - EX1, UN1, EX2, UN2
+// - EX1, UN1, EX2, UN2.
 func TestExSequence(tt *testing.T) {
 	t := check.T(tt)
 
@@ -98,7 +51,7 @@ func TestExSequence(tt *testing.T) {
 	un2 <- struct{}{}
 }
 
-// - EX1, EX2(block), UN1, (unblockEX2), UN2
+// - EX1, EX2(block), UN1, (unblockEX2), UN2.
 func TestExParallel(tt *testing.T) {
 	t := check.T(tt)
 
@@ -117,7 +70,7 @@ func TestExParallel(tt *testing.T) {
 	un2 <- struct{}{}
 }
 
-// - EX1, SH2(block), UN1, (unblock)SH2, UN2
+// - EX1, SH2(block), UN1, (unblock)SH2, UN2.
 func TestExShParallel(tt *testing.T) {
 	t := check.T(tt)
 
@@ -136,7 +89,7 @@ func TestExShParallel(tt *testing.T) {
 	un2 <- struct{}{}
 }
 
-// - SH1, SH2, UN1, UN2
+// - SH1, SH2, UN1, UN2.
 func TestShParallel(tt *testing.T) {
 	t := check.T(tt)
 
@@ -154,7 +107,7 @@ func TestShParallel(tt *testing.T) {
 	un2 <- struct{}{}
 }
 
-// - SH1, EX2(block), SH3(block), UN1, (unblock)EX2, UN2, (unblock)SH3, UN3
+// - SH1, EX2(block), SH3(block), UN1, (unblock)EX2, UN2, (unblock)SH3, UN3.
 func TestExPriority(tt *testing.T) {
 	t := check.T(tt)
 
@@ -183,8 +136,10 @@ func TestNotInitialized(tt *testing.T) {
 
 	s, err := newStorage(loc)
 	t.Nil(err)
+	defer s.Close()
 
-	t.PanicMatch(func() { s.SharedLock() }, `doesn't exist`)
+	t.PanicMatch(func() { s.SharedLock() }, `does not exist`)
+	s.tx.Rollback()
 }
 
 func TestGet(tt *testing.T) {
@@ -193,6 +148,7 @@ func TestGet(tt *testing.T) {
 	v, err := newInitializedStorage(loc)
 	t.Nil(err)
 	defer dropTable(t)
+	defer v.Close()
 
 	v.SharedLock()
 	t.Equal(v.Get(), "none")
@@ -202,38 +158,43 @@ func TestGet(tt *testing.T) {
 func TestSet(tt *testing.T) {
 	t := check.T(tt)
 
-	c, err := newInitializedStorage(loc)
+	v, err := newInitializedStorage(loc)
 	t.Nil(err)
 	defer dropTable(t)
+	defer v.Close()
 
-	cases := []struct {
-		val       string
-		wantpanic bool
-	}{
-		{"42.", true},
-		{"42..", true},
-		{".42", true},
-		{"-42", true},
-		{"", true},
-		{"rat", true},
-		{"v1.2.3", true},
-		{"None", true},
-		{"none", false},
-		{"dirty", false},
-		{"43", false},
-		{"0", false},
-		{"43.0.1", false},
+	v.ExclusiveLock()
+	t.PanicMatch(func() { v.Set("42") }, `not supported`)
+	v.Unlock()
+}
+
+func TestReconnect(tt *testing.T) {
+	t := check.T(tt)
+
+	v, err := newInitializedStorage(loc)
+	t.Nil(err)
+	defer dropTable(t)
+	defer v.Close()
+
+	restartProxy := func() {
+		proxy.Close()
+		t.Nil(internal.WaitTCPPortClosed(ctx, proxy.FrontendAddr()))
+		go func() {
+			var err error
+			time.Sleep(time.Second)
+			proxy, err = internal.NewTCPProxy(ctx, proxy.FrontendAddr().String(), proxy.BackendAddr().String())
+			t.Nil(err)
+		}()
 	}
 
-	c.ExclusiveLock()
-	defer c.Unlock()
-	for _, v := range cases {
-		v := v
-		if v.wantpanic {
-			t.PanicMatch(func() { c.Set(v.val) }, `invalid version value, require 'none' or 'dirty' or one or more digits separated with single dots`)
-		} else {
-			t.NotPanic(func() { c.Set(v.val) })
-			t.Equal(c.Get(), v.val)
-		}
-	}
+	v.SharedLock()
+	restartProxy()
+	t.NotPanic(v.Unlock)
+
+	t.NotPanic(v.SharedLock)
+	v.Unlock()
+
+	restartProxy()
+	t.NotPanic(v.ExclusiveLock)
+	v.Unlock()
 }

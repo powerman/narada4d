@@ -11,6 +11,7 @@ import (
 
 	"github.com/powerman/check"
 	"github.com/powerman/getenv"
+
 	"github.com/powerman/narada4d/schemaver"
 )
 
@@ -65,9 +66,9 @@ func TestLocation(tt *testing.T) {
 
 	// - case registered[loc.Scheme] = nil, error
 	os.Setenv(schemaver.EnvLocation, "new://")
-	t.Match(schemaver.Initialize(), `unknown protocol "new"`)
+	t.Match(schemaver.Initialize(), `unknown protocol: "new"`)
 	_, err = schemaver.New()
-	t.Match(err, `unknown protocol "new"`)
+	t.Match(err, `unknown protocol: "new"`)
 }
 
 func TestInitialize(tt *testing.T) {
@@ -98,8 +99,8 @@ func TestNew(tt *testing.T) {
 	t.Nil(err)
 }
 
-// - SH/EX (with backend, return version), UN (with backend)
-// - NARADA_SKIP_LOCK=1, SH/EX (no backend, return version), UN (no backend)
+// - SH/EX (with backend, return version), UN (with backend).
+// - NARADA_SKIP_LOCK=1, SH/EX (no backend, return version), UN (no backend).
 func TestShExLock(tt *testing.T) {
 	t := check.T(tt)
 	reset()

@@ -19,6 +19,12 @@ const (
 	lockQueueFileName = ".lock.queue"
 )
 
+var (
+	errVersionAlreadyInitialized = errors.New("version is already initialized")
+	errLocationInvalid           = errors.New("location must contain only path")
+	errLocationWrongPath         = errors.New("location path must be existing directory")
+)
+
 type storage struct {
 	versionPath   string
 	lockPath      string
@@ -43,7 +49,7 @@ func initialize(loc *url.URL) error {
 	}
 
 	if s.initialized() {
-		return fmt.Errorf("version already initialized at %q", s.versionPath)
+		return fmt.Errorf("%w at %q", errVersionAlreadyInitialized, s.versionPath)
 	}
 	return s.init()
 }
@@ -67,12 +73,12 @@ func newInitializedStorage(loc *url.URL) (schemaver.Manage, error) {
 
 func newStorage(loc *url.URL) (*storage, error) {
 	if loc.User != nil || loc.Host != "" || loc.RawQuery != "" || loc.Fragment != "" {
-		return nil, errors.New("location must contain only path")
+		return nil, errLocationInvalid
 	}
 
 	dir := filepath.Clean(loc.Path)
 	if fi, err := os.Stat(dir); err != nil || !fi.IsDir() {
-		return nil, errors.New("location path must be existing directory")
+		return nil, errLocationWrongPath
 	}
 
 	s := &storage{
@@ -89,9 +95,9 @@ func (s *storage) initialized() bool {
 }
 
 func (s *storage) init() error {
-	err := ioutil.WriteFile(s.lockPath, nil, 0444)
+	err := ioutil.WriteFile(s.lockPath, nil, 0o444)
 	if err == nil {
-		err = ioutil.WriteFile(s.lockQueuePath, nil, 0444)
+		err = ioutil.WriteFile(s.lockQueuePath, nil, 0o444)
 	}
 	if err == nil {
 		err = os.Symlink(schemaver.NoVersion, s.versionPath)

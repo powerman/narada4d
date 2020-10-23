@@ -7,16 +7,25 @@ import (
 	"net/url"
 	"strconv"
 
+	"github.com/cenkalti/backoff/v4"
+	"github.com/lib/pq"
 	"github.com/powerman/goose"
 	"github.com/powerman/must"
+	_ "github.com/powerman/pqx" //nolint:gci // Driver.
+
+	"github.com/powerman/narada4d/internal"
 	"github.com/powerman/narada4d/schemaver"
-	_ "github.com/powerman/pqx" //nolint:golint // Driver.
 )
 
 const (
 	sqlInitialized   = `SELECT COUNT(*) FROM goose_db_version`
 	sqlSharedLock    = `LOCK TABLE goose_db_version IN SHARE MODE`
 	sqlExclusiveLock = `LOCK TABLE goose_db_version IN SHARE UPDATE EXCLUSIVE MODE`
+)
+
+var (
+	errAlreadyInitialized = errors.New("already initialized")
+	errLocked             = errors.New("locked")
 )
 
 type storage struct {
@@ -40,7 +49,7 @@ func initialize(loc *url.URL) error {
 	defer s.Close() //nolint:errcheck // Defer.
 
 	if s.initialized() {
-		return errors.New("already initialized")
+		return errAlreadyInitialized
 	}
 	return s.init()
 }
@@ -98,30 +107,46 @@ func (s *storage) SharedLock() {
 	if s.tx != nil {
 		panic("already locked")
 	}
-	var err error
-	s.tx, err = s.db.Begin()
-	must.PanicIf(err)
-	_, err = s.tx.Exec(sqlSharedLock)
-	must.PanicIf(err)
+	op := func() (err error) {
+		s.tx, err = s.db.Begin()
+		if err == nil {
+			_, err = s.tx.Exec(sqlSharedLock)
+		}
+		if errors.As(err, new(*pq.Error)) { // Retry on network errors.
+			err = backoff.Permanent(err)
+		}
+		return err
+	}
+	must.PanicIf(backoff.Retry(op, internal.NewBackOff()))
 }
 
 func (s *storage) ExclusiveLock() {
 	if s.tx != nil {
 		panic("already locked")
 	}
-	var err error
-	s.tx, err = s.db.Begin()
-	must.PanicIf(err)
-	_, err = s.tx.Exec(sqlExclusiveLock)
-	must.PanicIf(err)
+	op := func() (err error) {
+		s.tx, err = s.db.Begin()
+		if err == nil {
+			_, err = s.tx.Exec(sqlExclusiveLock)
+		}
+		if errors.As(err, new(*pq.Error)) { // Retry on network errors.
+			err = backoff.Permanent(err)
+		}
+		return err
+	}
+	must.PanicIf(backoff.Retry(op, internal.NewBackOff()))
 }
 
 func (s *storage) Unlock() {
 	if s.tx == nil {
 		panic("not locked")
 	}
-	must.PanicIf(s.tx.Commit())
+	err := s.tx.Commit()
 	s.tx = nil
+	if err != nil && !errors.As(err, new(*pq.Error)) { // Ignore network errors.
+		err = nil
+	}
+	must.PanicIf(err)
 }
 
 func (s *storage) Get() string {
@@ -139,7 +164,7 @@ func (s *storage) Set(string) {
 
 func (s *storage) Close() error {
 	if s.tx != nil {
-		return errors.New("locked")
+		return errLocked
 	}
 	return s.db.Close()
 }

@@ -1,11 +1,14 @@
 // +build integration
 
-package goosepostgres
+package goosemysql
 
 import (
 	"testing"
+	"time"
 
 	"github.com/powerman/check"
+
+	"github.com/powerman/narada4d/internal"
 )
 
 func TestInitialize(tt *testing.T) {
@@ -30,7 +33,7 @@ func TestInitialized(tt *testing.T) {
 	dropTable(t)
 }
 
-// - EX1, UN1, EX2, UN2
+// - EX1, UN1, EX2, UN2.
 func TestExSequence(tt *testing.T) {
 	t := check.T(tt)
 
@@ -48,7 +51,7 @@ func TestExSequence(tt *testing.T) {
 	un2 <- struct{}{}
 }
 
-// - EX1, EX2(block), UN1, (unblockEX2), UN2
+// - EX1, EX2(block), UN1, (unblockEX2), UN2.
 func TestExParallel(tt *testing.T) {
 	t := check.T(tt)
 
@@ -67,7 +70,7 @@ func TestExParallel(tt *testing.T) {
 	un2 <- struct{}{}
 }
 
-// - EX1, SH2(block), UN1, (unblock)SH2, UN2
+// - EX1, SH2(block), UN1, (unblock)SH2, UN2.
 func TestExShParallel(tt *testing.T) {
 	t := check.T(tt)
 
@@ -86,7 +89,7 @@ func TestExShParallel(tt *testing.T) {
 	un2 <- struct{}{}
 }
 
-// - SH1, SH2, UN1, UN2
+// - SH1, SH2, UN1, UN2.
 func TestShParallel(tt *testing.T) {
 	t := check.T(tt)
 
@@ -104,7 +107,7 @@ func TestShParallel(tt *testing.T) {
 	un2 <- struct{}{}
 }
 
-// - SH1, EX2(block), SH3(block), UN1, (unblock)EX2, UN2, (unblock)SH3, UN3
+// - SH1, EX2(block), SH3(block), UN1, (unblock)EX2, UN2, (unblock)SH3, UN3.
 func TestExPriority(tt *testing.T) {
 	t := check.T(tt)
 
@@ -135,8 +138,8 @@ func TestNotInitialized(tt *testing.T) {
 	t.Nil(err)
 	defer s.Close()
 
-	t.PanicMatch(func() { s.SharedLock() }, `does not exist`)
-	defer s.tx.Rollback()
+	t.PanicMatch(func() { s.SharedLock() }, `doesn't exist`)
+	s.tx.Rollback()
 }
 
 func TestGet(tt *testing.T) {
@@ -162,5 +165,36 @@ func TestSet(tt *testing.T) {
 
 	v.ExclusiveLock()
 	t.PanicMatch(func() { v.Set("42") }, `not supported`)
+	v.Unlock()
+}
+
+func TestReconnect(tt *testing.T) {
+	t := check.T(tt)
+
+	v, err := newInitializedStorage(loc)
+	t.Nil(err)
+	defer dropTable(t)
+	defer v.Close()
+
+	restartProxy := func() {
+		proxy.Close()
+		t.Nil(internal.WaitTCPPortClosed(ctx, proxy.FrontendAddr()))
+		go func() {
+			var err error
+			time.Sleep(time.Second)
+			proxy, err = internal.NewTCPProxy(ctx, proxy.FrontendAddr().String(), proxy.BackendAddr().String())
+			t.Nil(err)
+		}()
+	}
+
+	v.SharedLock()
+	restartProxy()
+	t.NotPanic(v.Unlock)
+
+	t.NotPanic(v.SharedLock)
+	v.Unlock()
+
+	restartProxy()
+	t.NotPanic(v.ExclusiveLock)
 	v.Unlock()
 }

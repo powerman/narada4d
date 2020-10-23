@@ -251,3 +251,17 @@ at location provided in $NARADA4D. Without command will run shell (useful
 for manual maintenance in case of "dirty" schema version).
 Exits with exit code of executed command or 127 of command was terminated
 by signal.
+
+# Test
+
+Tests will create, use and remove temporary database, but they need an
+access to MySQL and PostgreSQL with enough permissions for CREATE DATABASE
+with database name prefix matching provided database name:
+
+```
+$ PGUSER=user PGPASSWORD=pass \
+  PGHOST=localhost PGPORT=5432 \
+  PGDATABASE=postgres PGSSLMODE=disable \
+  NARADA4D_TEST_MYSQL=mysql://user:pass@127.0.0.1:3306/gotest \
+  go test -tags=integration ./...
+```
