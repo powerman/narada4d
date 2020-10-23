@@ -11,7 +11,10 @@ import (
 	"github.com/docker/go-connections/proxy"
 )
 
+// Ctx is a synonym for convenience.
 type Ctx = context.Context
+
+var errTCPPortOpen = errors.New("tcp port is open")
 
 // WaitTCPPort tries to connect to addr until success or ctx.Done.
 func WaitTCPPort(ctx Ctx, addr fmt.Stringer) error {
@@ -31,7 +34,6 @@ func WaitTCPPort(ctx Ctx, addr fmt.Stringer) error {
 // WaitTCPPortClosed tries to connect to addr until failed or ctx.Done.
 func WaitTCPPortClosed(ctx Ctx, addr fmt.Stringer) error {
 	const delay = time.Second / 20
-	errTCPPortOpen := errors.New("tcp port is open")
 	backOff := backoff.WithContext(backoff.NewConstantBackOff(delay), ctx)
 	op := func() error {
 		var dialer net.Dialer

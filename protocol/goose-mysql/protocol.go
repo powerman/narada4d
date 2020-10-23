@@ -10,7 +10,6 @@ import (
 
 	"github.com/cenkalti/backoff/v4"
 	"github.com/go-sql-driver/mysql"
-	_ "github.com/go-sql-driver/mysql" // Driver.
 	"github.com/powerman/goose"
 	"github.com/powerman/must"
 
@@ -30,6 +29,11 @@ SELECT "version_from" as var, "goose" as val
 	sqlSharedLock    = `LOCK TABLES Narada4D READ`
 	sqlExclusiveLock = `LOCK TABLES Narada4D WRITE`
 	sqlUnlock        = `UNLOCK TABLES`
+)
+
+var (
+	errAlreadyInitialized = errors.New("already initialized")
+	errLocked             = errors.New("locked")
 )
 
 type storage struct {
@@ -53,7 +57,7 @@ func initialize(loc *url.URL) error {
 	defer s.Close() //nolint:errcheck // Defer.
 
 	if s.initialized() {
-		return errors.New("already initialized")
+		return errAlreadyInitialized
 	}
 	return s.init()
 }
@@ -180,7 +184,7 @@ func (s *storage) Set(string) {
 
 func (s *storage) Close() error {
 	if s.tx != nil {
-		return errors.New("locked")
+		return errLocked
 	}
 	return s.db.Close()
 }

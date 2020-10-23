@@ -11,7 +11,7 @@ import (
 	"github.com/lib/pq"
 	"github.com/powerman/goose"
 	"github.com/powerman/must"
-	_ "github.com/powerman/pqx" //nolint:golint // Driver.
+	_ "github.com/powerman/pqx" //nolint:gci // Driver.
 
 	"github.com/powerman/narada4d/internal"
 	"github.com/powerman/narada4d/schemaver"
@@ -21,6 +21,11 @@ const (
 	sqlInitialized   = `SELECT COUNT(*) FROM goose_db_version`
 	sqlSharedLock    = `LOCK TABLE goose_db_version IN SHARE MODE`
 	sqlExclusiveLock = `LOCK TABLE goose_db_version IN SHARE UPDATE EXCLUSIVE MODE`
+)
+
+var (
+	errAlreadyInitialized = errors.New("already initialized")
+	errLocked             = errors.New("locked")
 )
 
 type storage struct {
@@ -44,7 +49,7 @@ func initialize(loc *url.URL) error {
 	defer s.Close() //nolint:errcheck // Defer.
 
 	if s.initialized() {
-		return errors.New("already initialized")
+		return errAlreadyInitialized
 	}
 	return s.init()
 }
@@ -159,7 +164,7 @@ func (s *storage) Set(string) {
 
 func (s *storage) Close() error {
 	if s.tx != nil {
-		return errors.New("locked")
+		return errLocked
 	}
 	return s.db.Close()
 }

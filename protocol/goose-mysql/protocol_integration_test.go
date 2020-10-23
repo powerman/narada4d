@@ -33,7 +33,7 @@ func TestInitialized(tt *testing.T) {
 	dropTable(t)
 }
 
-// - EX1, UN1, EX2, UN2
+// - EX1, UN1, EX2, UN2.
 func TestExSequence(tt *testing.T) {
 	t := check.T(tt)
 
@@ -51,7 +51,7 @@ func TestExSequence(tt *testing.T) {
 	un2 <- struct{}{}
 }
 
-// - EX1, EX2(block), UN1, (unblockEX2), UN2
+// - EX1, EX2(block), UN1, (unblockEX2), UN2.
 func TestExParallel(tt *testing.T) {
 	t := check.T(tt)
 
@@ -70,7 +70,7 @@ func TestExParallel(tt *testing.T) {
 	un2 <- struct{}{}
 }
 
-// - EX1, SH2(block), UN1, (unblock)SH2, UN2
+// - EX1, SH2(block), UN1, (unblock)SH2, UN2.
 func TestExShParallel(tt *testing.T) {
 	t := check.T(tt)
 
@@ -89,7 +89,7 @@ func TestExShParallel(tt *testing.T) {
 	un2 <- struct{}{}
 }
 
-// - SH1, SH2, UN1, UN2
+// - SH1, SH2, UN1, UN2.
 func TestShParallel(tt *testing.T) {
 	t := check.T(tt)
 
@@ -107,7 +107,7 @@ func TestShParallel(tt *testing.T) {
 	un2 <- struct{}{}
 }
 
-// - SH1, EX2(block), SH3(block), UN1, (unblock)EX2, UN2, (unblock)SH3, UN3
+// - SH1, EX2(block), SH3(block), UN1, (unblock)EX2, UN2, (unblock)SH3, UN3.
 func TestExPriority(tt *testing.T) {
 	t := check.T(tt)
 
@@ -139,7 +139,7 @@ func TestNotInitialized(tt *testing.T) {
 	defer s.Close()
 
 	t.PanicMatch(func() { s.SharedLock() }, `doesn't exist`)
-	defer s.tx.Rollback()
+	s.tx.Rollback()
 }
 
 func TestGet(tt *testing.T) {

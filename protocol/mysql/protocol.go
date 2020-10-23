@@ -33,6 +33,15 @@ SELECT "version" as var, "none" as val
 	sqlSetVersion    = `UPDATE Narada4D SET val=? WHERE var='version'`
 )
 
+var (
+	errLocationRequireUsername = errors.New("username absent, require mysql://username[:password]@host[:port]/database")
+	errLocationRequireHost     = errors.New("host absent, require mysql://username[:password]@host[:port]/database")
+	errLocationRequireDB       = errors.New("database absent, require mysql://username[:password]@host[:port]/database")
+	errLocationInvalid         = errors.New("unexpected query params or fragment, require mysql://username[:password]@host[:port]/database")
+	errAlreadyInitialized      = errors.New("already initialized")
+	errLocked                  = errors.New("locked")
+)
+
 type storage struct {
 	db *sql.DB
 	tx *sql.Tx
@@ -48,13 +57,13 @@ func init() {
 func validate(loc *url.URL) error {
 	switch {
 	case loc.User == nil || loc.User.Username() == "":
-		return errors.New("username absent, require mysql://username[:password]@host[:port]/database")
+		return errLocationRequireUsername
 	case loc.Host == "":
-		return errors.New("host absent, require mysql://username[:password]@host[:port]/database")
+		return errLocationRequireHost
 	case loc.Path == "" || loc.Path == "/":
-		return errors.New("database absent, require mysql://username[:password]@host[:port]/database")
+		return errLocationRequireDB
 	case loc.RawQuery != "" || loc.Fragment != "":
-		return errors.New("unexpected query params or fragment, require mysql://username[:password]@host[:port]/database")
+		return errLocationInvalid
 	default:
 		return nil
 	}
@@ -68,7 +77,7 @@ func initialize(loc *url.URL) error {
 	defer s.Close() //nolint:errcheck // Defer.
 
 	if s.initialized() {
-		return errors.New("already initialized")
+		return errAlreadyInitialized
 	}
 	return s.init()
 }
@@ -205,7 +214,7 @@ func (s *storage) Set(ver string) {
 
 func (s *storage) Close() error {
 	if s.tx != nil {
-		return errors.New("locked")
+		return errLocked
 	}
 	return s.db.Close()
 }

@@ -3,7 +3,6 @@
 package mysql
 
 import (
-	"errors"
 	"fmt"
 	"net/url"
 	"strings"
@@ -26,19 +25,18 @@ func TestConnect(tt *testing.T) {
 		dbName    = strings.TrimPrefix(loc.Path, "/")
 	)
 
-	require := "require mysql://username[:password]@host[:port]/database"
 	cases := []struct {
 		url     string
 		wanterr error
 	}{
 		{fmt.Sprintf("mysql://%s:%s@%s:%s/%s", dbUser, dbPass, dbHost, dbPort, dbName), nil},
-		{fmt.Sprintf("mysql://%s:%s@%s:%s/", dbUser, dbPass, dbHost, dbPort), errors.New("database absent, " + require)},
-		{fmt.Sprintf("mysql://%s:%s@%s:%s", dbUser, dbPass, dbHost, dbPort), errors.New("database absent, " + require)},
-		{fmt.Sprintf("mysql://%s:%s@/%s", dbUser, dbPass, dbName), errors.New("host absent, " + require)},
-		{fmt.Sprintf("mysql://:%s@%s:%s/%s", dbPass, dbHost, dbPort, dbName), errors.New("username absent, " + require)},
-		{fmt.Sprintf("mysql://%s:%s@%s:%s/%s?a=3", dbUser, dbPass, dbHost, dbPort, dbName), errors.New("unexpected query params or fragment, " + require)},
-		{fmt.Sprintf("mysql://%s:%s@%s:%s/%s#a", dbUser, dbPass, dbHost, dbPort, dbName), errors.New("unexpected query params or fragment, " + require)},
-		{"mysql://", errors.New("username absent, " + require)},
+		{fmt.Sprintf("mysql://%s:%s@%s:%s/", dbUser, dbPass, dbHost, dbPort), errLocationRequireDB},
+		{fmt.Sprintf("mysql://%s:%s@%s:%s", dbUser, dbPass, dbHost, dbPort), errLocationRequireDB},
+		{fmt.Sprintf("mysql://%s:%s@/%s", dbUser, dbPass, dbName), errLocationRequireHost},
+		{fmt.Sprintf("mysql://:%s@%s:%s/%s", dbPass, dbHost, dbPort, dbName), errLocationRequireUsername},
+		{fmt.Sprintf("mysql://%s:%s@%s:%s/%s?a=3", dbUser, dbPass, dbHost, dbPort, dbName), errLocationInvalid},
+		{fmt.Sprintf("mysql://%s:%s@%s:%s/%s#a", dbUser, dbPass, dbHost, dbPort, dbName), errLocationInvalid},
+		{"mysql://", errLocationRequireUsername},
 	}
 
 	for _, v := range cases {
@@ -84,7 +82,7 @@ func TestInitialized(tt *testing.T) {
 	dropTable(t)
 }
 
-// - EX1, UN1, EX2, UN2
+// - EX1, UN1, EX2, UN2.
 func TestExSequence(tt *testing.T) {
 	t := check.T(tt)
 
@@ -102,7 +100,7 @@ func TestExSequence(tt *testing.T) {
 	un2 <- struct{}{}
 }
 
-// - EX1, EX2(block), UN1, (unblockEX2), UN2
+// - EX1, EX2(block), UN1, (unblockEX2), UN2.
 func TestExParallel(tt *testing.T) {
 	t := check.T(tt)
 
@@ -121,7 +119,7 @@ func TestExParallel(tt *testing.T) {
 	un2 <- struct{}{}
 }
 
-// - EX1, SH2(block), UN1, (unblock)SH2, UN2
+// - EX1, SH2(block), UN1, (unblock)SH2, UN2.
 func TestExShParallel(tt *testing.T) {
 	t := check.T(tt)
 
@@ -140,7 +138,7 @@ func TestExShParallel(tt *testing.T) {
 	un2 <- struct{}{}
 }
 
-// - SH1, SH2, UN1, UN2
+// - SH1, SH2, UN1, UN2.
 func TestShParallel(tt *testing.T) {
 	t := check.T(tt)
 
@@ -158,7 +156,7 @@ func TestShParallel(tt *testing.T) {
 	un2 <- struct{}{}
 }
 
-// - SH1, EX2(block), SH3(block), UN1, (unblock)EX2, UN2, (unblock)SH3, UN3
+// - SH1, EX2(block), SH3(block), UN1, (unblock)EX2, UN2, (unblock)SH3, UN3.
 func TestExPriority(tt *testing.T) {
 	t := check.T(tt)
 
@@ -190,7 +188,7 @@ func TestNotInitialized(tt *testing.T) {
 	defer s.Close()
 
 	t.PanicMatch(func() { s.SharedLock() }, `doesn't exist`)
-	defer s.tx.Rollback()
+	s.tx.Rollback()
 }
 
 func TestGet(tt *testing.T) {

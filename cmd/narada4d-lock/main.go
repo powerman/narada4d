@@ -52,7 +52,7 @@ func run(args []string) (code int) {
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	err := cmd.Run()
-	if err != nil {
+	if err != nil { //nolint:nestif // False positive?
 		if exitErr, ok := err.(*exec.ExitError); ok {
 			if wait, ok := exitErr.Sys().(syscall.WaitStatus); ok {
 				code = wait.ExitStatus()

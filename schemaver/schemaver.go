@@ -3,6 +3,7 @@ package schemaver
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/url"
 	"os"
@@ -26,13 +27,15 @@ const (
 	EnvSkipLock = "NARADA4D_SKIP_LOCK"
 )
 
+var errUnknownProtocol = errors.New("narada4d: unknown protocol")
+
 func parseLocation(location string) (*url.URL, error) {
 	loc, err := url.Parse(location)
 	if err != nil {
 		return nil, fmt.Errorf("narada4d: %w", err)
 	}
 	if registered[loc.Scheme] == nil {
-		return nil, fmt.Errorf("narada4d: unknown protocol %q", loc.Scheme)
+		return nil, fmt.Errorf("%w: %q", errUnknownProtocol, loc.Scheme)
 	}
 	return loc, nil
 }
@@ -212,11 +215,13 @@ func (v *SchemaVer) SharedLock() string {
 	case shared:
 		v.skipUnlock++
 		ver = v.sharedVer
-	default:
+	case unlocked:
 		v.backend.SharedLock()
 		v.lockType = shared
 		v.sharedVer = v.backend.Get()
 		ver = v.sharedVer
+	default:
+		panic("never here")
 	}
 
 	for _, callback := range v.callbacks {
@@ -238,10 +243,12 @@ func (v *SchemaVer) ExclusiveLock() string {
 		v.skipUnlock++
 	case shared:
 		panic("unable to acquire exclusive lock under shared lock")
-	default:
+	case unlocked:
 		v.backend.ExclusiveLock()
 		v.lockType = exclusive
 		v.setSkipLock()
+	default:
+		panic("never here")
 	}
 
 	ver := v.backend.Get()
