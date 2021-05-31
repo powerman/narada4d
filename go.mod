@@ -3,7 +3,7 @@ module github.com/powerman/narada4d
 go 1.15
 
 require (
-	github.com/cenkalti/backoff/v4 v4.1.0
+	github.com/cenkalti/backoff/v4 v4.1.1
 	github.com/docker/go-connections v0.4.0
 	github.com/go-sql-driver/mysql v1.5.0
 	github.com/gopherjs/gopherjs v0.0.0-20200217142428-fce0ec30dd00 // indirect
