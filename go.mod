@@ -12,7 +12,7 @@ require (
 	github.com/powerman/getenv v0.1.0
 	github.com/powerman/goose v2.7.0-rc4.0.20200329145851-5c15923690fa+incompatible
 	github.com/powerman/gotest v0.3.0
-	github.com/powerman/must v0.1.0
+	github.com/powerman/must v0.1.1
 	github.com/powerman/mysqlx v0.3.3
 	github.com/powerman/pqx v0.7.0
 )
