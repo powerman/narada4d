@@ -5,7 +5,7 @@ go 1.16
 require (
 	github.com/cenkalti/backoff/v4 v4.1.1
 	github.com/docker/go-connections v0.4.0
-	github.com/go-sql-driver/mysql v1.6.0
+	github.com/go-sql-driver/mysql v1.7.0
 	github.com/gopherjs/gopherjs v0.0.0-20200217142428-fce0ec30dd00 // indirect
 	github.com/lib/pq v1.10.2
 	github.com/powerman/check v1.4.0
