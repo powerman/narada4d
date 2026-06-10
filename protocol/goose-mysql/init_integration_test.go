@@ -1,6 +1,4 @@
-//go:build integration
-
-package goosemysql
+package goosemysql //nolint:testpackage // Integration tests use unexported internals.
 
 import (
 	"context"
@@ -35,6 +33,10 @@ func setupIntegration() {
 	logger := log.New(os.Stderr, "", log.LstdFlags)
 	var err error
 
+	if os.Getenv("NARADA4D_TEST_MYSQL") == "" {
+		testinit.Fatal("$NARADA4D_TEST_MYSQL must be set for goose-mysql integration tests")
+	}
+
 	loc, err = url.Parse(os.Getenv("NARADA4D_TEST_MYSQL"))
 	if err != nil {
 		testinit.Fatal("failed to parse $NARADA4D_TEST_MYSQL as URL: ", err)
@@ -68,7 +70,7 @@ func dropTable(t *check.C) {
 	t.Helper()
 	s, err := newStorage(loc)
 	t.Nil(err)
-	_, err = s.db.Exec(sqlDropTable)
+	_, err = s.db.ExecContext(ctx, sqlDropTable)
 	t.Nil(err)
 	t.Nil(s.Close())
 }

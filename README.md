@@ -268,14 +268,31 @@ by signal.
 
 # Test
 
-Tests will create, use and remove temporary database, but they need an
-access to MySQL and PostgreSQL with enough permissions for CREATE DATABASE
-with database name prefix matching provided database name:
+Integration tests are part of the regular test suite and require access to
+MySQL and PostgreSQL with enough permissions for CREATE DATABASE with
+database name prefix matching provided database name.
 
+Start required databases:
+
+```bash
+docker compose up -d
 ```
-$ PGUSER=user PGPASSWORD=pass \
-  PGHOST=localhost PGPORT=5432 \
-  PGDATABASE=postgres PGSSLMODE=disable \
-  NARADA4D_TEST_MYSQL=mysql://user:pass@127.0.0.1:3306/gotest \
-  go test -tags=integration ./...
+
+Connection settings are configured via environment variables (default values
+are defined in `mise.toml` under `[env]`). Run tests using mise to load them:
+
+```bash
+mise run test
 ```
+
+To use non-default ports (e.g. standard+50000), create `mise.local.toml`:
+
+```toml
+[env]
+NARADA4D_PG_PORT = '55432'
+PGPORT = '{{env.NARADA4D_PG_PORT}}'
+NARADA4D_MYSQL_PORT = '53306'
+NARADA4D_TEST_MYSQL = 'mysql://root:test@127.0.0.1:{{env.NARADA4D_MYSQL_PORT}}/gotest'
+```
+
+Integration tests will create, use and remove temporary databases.

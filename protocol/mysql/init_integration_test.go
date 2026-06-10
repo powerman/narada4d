@@ -1,6 +1,4 @@
-//go:build integration
-
-package mysql
+package mysql //nolint:testpackage // Integration tests use unexported internals.
 
 import (
 	"context"
@@ -34,6 +32,10 @@ func init() { testinit.Setup(2, setupIntegration) }
 func setupIntegration() {
 	logger := log.New(os.Stderr, "", log.LstdFlags)
 	var err error
+
+	if os.Getenv("NARADA4D_TEST_MYSQL") == "" {
+		testinit.Fatal("$NARADA4D_TEST_MYSQL must be set for MySQL integration tests")
+	}
 
 	loc, err = url.Parse(os.Getenv("NARADA4D_TEST_MYSQL"))
 	if err != nil {
@@ -74,7 +76,7 @@ func dropTable(t *check.C) {
 	t.Helper()
 	s, err := newStorage(loc)
 	t.Nil(err)
-	_, err = s.db.Exec(sqlDropTable)
+	_, err = s.db.ExecContext(ctx, sqlDropTable)
 	t.Nil(err)
 	t.Nil(s.Close())
 }

@@ -1,9 +1,8 @@
-//go:build integration
-
-package goosepostgres
+package goosepostgres //nolint:testpackage // Integration tests use unexported internals.
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"net"
@@ -37,9 +36,13 @@ func setupIntegration() {
 	logger := log.New(os.Stderr, "", log.LstdFlags)
 	var err error
 
-	loc, err = url.Parse(fmt.Sprintf("goose-postgres://%s:%s@%s:%s/%s?sslmode=%s",
+	if os.Getenv("PGUSER") == "" {
+		testinit.Fatal("$PGUSER, $PGPASSWORD, $PGHOST, $PGPORT, $PGDATABASE, $PGSSLMODE must be set for PostgreSQL integration tests")
+	}
+
+	loc, err = url.Parse(fmt.Sprintf("goose-postgres://%s:%s@%s/%s?sslmode=%s",
 		env2path("PGUSER"), env2path("PGPASSWORD"),
-		env2path("PGHOST"), env2path("PGPORT"),
+		net.JoinHostPort(os.Getenv("PGHOST"), os.Getenv("PGPORT")),
 		env2path("PGDATABASE")+url.PathEscape("_"+testDBSuffix),
 		env2query("PGSSLMODE")))
 	if err != nil {
@@ -64,7 +67,8 @@ func setupIntegration() {
 
 	_, cleanup, err := pqx.EnsureTempDB(logger, testDBSuffix, dbCfg)
 	if err != nil {
-		if err, ok := err.(*pq.Error); !ok || err.Code.Class().Name() == "invalid_authorization_specification" {
+		var pqErr *pq.Error
+		if errors.As(err, &pqErr) {
 			logger.Print("set environment variables to allow connection to postgresql:\nhttps://www.postgresql.org/docs/current/libpq-envars.html")
 		}
 		testinit.Fatal(err)
@@ -79,7 +83,7 @@ func dropTable(t *check.C) {
 	t.Helper()
 	s, err := newStorage(loc)
 	t.Nil(err)
-	_, err = s.db.Exec(sqlDropTable)
+	_, err = s.db.ExecContext(ctx, sqlDropTable)
 	t.Nil(err)
 	t.Nil(s.Close())
 }

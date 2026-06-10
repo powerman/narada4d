@@ -1,9 +1,9 @@
-//go:build integration
-
-package mysql
+//nolint:paralleltest // These tests share global state and cannot run in parallel.
+package mysql //nolint:testpackage // Integration tests use unexported internals.
 
 import (
 	"fmt"
+	"net"
 	"net/url"
 	"strings"
 	"testing"
@@ -25,17 +25,19 @@ func TestConnect(tt *testing.T) {
 		dbName    = strings.TrimPrefix(loc.Path, "/")
 	)
 
+	hostPort := net.JoinHostPort(dbHost, dbPort)
+
 	cases := []struct {
 		url     string
 		wanterr error
 	}{
-		{fmt.Sprintf("mysql://%s:%s@%s:%s/%s", dbUser, dbPass, dbHost, dbPort, dbName), nil},
-		{fmt.Sprintf("mysql://%s:%s@%s:%s/", dbUser, dbPass, dbHost, dbPort), errLocationRequireDB},
-		{fmt.Sprintf("mysql://%s:%s@%s:%s", dbUser, dbPass, dbHost, dbPort), errLocationRequireDB},
+		{fmt.Sprintf("mysql://%s:%s@%s/%s", dbUser, dbPass, hostPort, dbName), nil},
+		{fmt.Sprintf("mysql://%s:%s@%s/", dbUser, dbPass, hostPort), errLocationRequireDB},
+		{fmt.Sprintf("mysql://%s:%s@%s", dbUser, dbPass, hostPort), errLocationRequireDB},
 		{fmt.Sprintf("mysql://%s:%s@/%s", dbUser, dbPass, dbName), errLocationRequireHost},
-		{fmt.Sprintf("mysql://:%s@%s:%s/%s", dbPass, dbHost, dbPort, dbName), errLocationRequireUsername},
-		{fmt.Sprintf("mysql://%s:%s@%s:%s/%s?a=3", dbUser, dbPass, dbHost, dbPort, dbName), errLocationInvalid},
-		{fmt.Sprintf("mysql://%s:%s@%s:%s/%s#a", dbUser, dbPass, dbHost, dbPort, dbName), errLocationInvalid},
+		{fmt.Sprintf("mysql://:%s@%s/%s", dbPass, hostPort, dbName), errLocationRequireUsername},
+		{fmt.Sprintf("mysql://%s:%s@%s/%s?a=3", dbUser, dbPass, hostPort, dbName), errLocationInvalid},
+		{fmt.Sprintf("mysql://%s:%s@%s/%s#a", dbUser, dbPass, hostPort, dbName), errLocationInvalid},
 		{"mysql://", errLocationRequireUsername},
 	}
 
@@ -49,12 +51,12 @@ func TestConnect(tt *testing.T) {
 		}
 	}
 
-	p, err := url.Parse(fmt.Sprintf("mysql://incUserName:%s@%s:%s/%s", dbPass, dbHost, dbPort, dbName))
+	p, err := url.Parse(fmt.Sprintf("mysql://incUserName:%s@%s/%s", dbPass, hostPort, dbName))
 	t.Nil(err)
 	_, err = newStorage(p)
 	t.Match(err, `Access denied`)
 
-	p, err = url.Parse(fmt.Sprintf("mysql://%s:incPass@%s:%s/%s", dbUser, dbHost, dbPort, dbName))
+	p, err = url.Parse(fmt.Sprintf("mysql://%s:incPass@%s/%s", dbUser, hostPort, dbName))
 	t.Nil(err)
 	_, err = newStorage(p)
 	t.Match(err, `Access denied`)
@@ -73,10 +75,10 @@ func TestInitialized(tt *testing.T) {
 	t.Nil(err)
 	defer s.Close()
 
-	//- Not initialized()
+	// - Not initialized()
 	t.False(s.initialized())
 
-	//- Initialized()
+	// - Initialized()
 	t.Nil(initialize(loc))
 	t.True(s.initialized())
 	dropTable(t)
@@ -234,7 +236,6 @@ func TestSet(tt *testing.T) {
 	v.ExclusiveLock()
 	defer v.Unlock()
 	for _, tc := range cases {
-		tc := tc
 		if tc.wantpanic {
 			t.PanicMatch(func() { v.Set(tc.val) }, `invalid version value, require 'none' or 'dirty' or one or more digits separated with single dots`)
 		} else {

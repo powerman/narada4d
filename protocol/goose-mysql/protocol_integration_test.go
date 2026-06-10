@@ -1,6 +1,5 @@
-//go:build integration
-
-package goosemysql
+//nolint:paralleltest // These tests share global state and cannot run in parallel.
+package goosemysql //nolint:testpackage // Integration tests use unexported internals.
 
 import (
 	"testing"
@@ -24,10 +23,10 @@ func TestInitialized(tt *testing.T) {
 	t.Nil(err)
 	defer s.Close()
 
-	//- Not initialized()
+	// - Not initialized()
 	t.False(s.initialized())
 
-	//- Initialized()
+	// - Initialized()
 	t.Nil(initialize(loc))
 	t.True(s.initialized())
 	dropTable(t)

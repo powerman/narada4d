@@ -26,6 +26,18 @@ git-cliff = 'latest'
 gh = 'latest'
 
 
+[env]
+NARADA4D_PG_PORT = '5432'
+PGUSER = 'test'
+PGPASSWORD = 'test'
+PGHOST = 'localhost'
+PGPORT = '{{env.NARADA4D_PG_PORT}}'
+PGDATABASE = 'postgres'
+PGSSLMODE = 'disable'
+NARADA4D_MYSQL_PORT = '3306'
+NARADA4D_TEST_MYSQL = 'mysql://root:test@127.0.0.1:{{env.NARADA4D_MYSQL_PORT}}/gotest'
+
+
 [vars]
 cover = '.cache/cover.out'
 
