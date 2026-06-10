@@ -88,7 +88,8 @@ func newInitializedStorage(loc *url.URL) (schemaver.Manage, error) {
 		return nil, err
 	}
 	if !s.initialized() {
-		if err := s.init(); err != nil {
+		err := s.init()
+		if err != nil {
 			_ = s.Close()
 			return nil, err
 		}
@@ -201,7 +202,7 @@ func (s *storage) Get() string {
 	return version
 }
 
-var reVersion = regexp.MustCompile(`\A(?:none|dirty|\d+(?:[.]\d+)*)\z`) //nolint:gochecknoglobals // Regexp.
+var reVersion = regexp.MustCompile(`\A(?:none|dirty|\d+(?:[.]\d+)*)\z`)
 
 func (s *storage) Set(ver string) {
 	if reVersion.MatchString(ver) {

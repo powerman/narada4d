@@ -68,7 +68,8 @@ func newInitializedStorage(loc *url.URL) (schemaver.Manage, error) {
 		return nil, err
 	}
 	if !s.initialized() {
-		if err := s.init(); err != nil {
+		err := s.init()
+		if err != nil {
 			_ = s.Close()
 			return nil, err
 		}

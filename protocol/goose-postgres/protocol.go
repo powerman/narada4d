@@ -11,7 +11,7 @@ import (
 	"github.com/lib/pq"
 	"github.com/powerman/goose"
 	"github.com/powerman/must"
-	_ "github.com/powerman/pqx" //nolint:gci // Driver.
+	_ "github.com/powerman/pqx"
 
 	"github.com/powerman/narada4d/internal"
 	"github.com/powerman/narada4d/schemaver"
@@ -60,7 +60,8 @@ func newInitializedStorage(loc *url.URL) (schemaver.Manage, error) {
 		return nil, err
 	}
 	if !s.initialized() {
-		if err := s.init(); err != nil {
+		err := s.init()
+		if err != nil {
 			_ = s.Close()
 			return nil, err
 		}

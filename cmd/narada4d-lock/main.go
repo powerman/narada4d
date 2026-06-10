@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -53,7 +54,8 @@ func run(args []string) (code int) {
 	cmd.Stderr = os.Stderr
 	err := cmd.Run()
 	if err != nil { //nolint:nestif // False positive?
-		if exitErr, ok := err.(*exec.ExitError); ok {
+		exitErr := &exec.ExitError{}
+		if errors.As(err, &exitErr) {
 			if wait, ok := exitErr.Sys().(syscall.WaitStatus); ok {
 				code = wait.ExitStatus()
 			} else {

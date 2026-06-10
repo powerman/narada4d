@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -150,8 +151,8 @@ func (v *SchemaVer) unsetSkipLock() {
 	defer muEnv.Unlock()
 
 	envs := strings.Fields(os.Getenv(EnvSkipLock))
-	for i := len(envs) - 1; i >= 0; i-- {
-		if loc, err := parseLocation(envs[i]); err == nil && loc.String() == v.loc.String() {
+	for i, v0 := range slices.Backward(envs) {
+		if loc, err := parseLocation(v0); err == nil && loc.String() == v.loc.String() {
 			copy(envs[i:], envs[i+1:])
 			envs = envs[:len(envs)-1]
 		}

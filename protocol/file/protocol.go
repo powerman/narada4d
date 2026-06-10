@@ -65,7 +65,8 @@ func newInitializedStorage(loc *url.URL) (schemaver.Manage, error) {
 		return nil, err
 	}
 	if !s.initialized() {
-		if err := s.init(); err != nil {
+		err := s.init()
+		if err != nil {
 			return nil, err
 		}
 	}
@@ -133,19 +134,23 @@ func (s *storage) ExclusiveLock() {
 }
 
 func (s *storage) lock(how int) {
-	if err := syscall.Flock(s.lockQueueFD, syscall.LOCK_EX); err != nil {
+	err := syscall.Flock(s.lockQueueFD, syscall.LOCK_EX)
+	if err != nil {
 		panic(err)
 	}
-	if err := syscall.Flock(s.lockFD, how); err != nil {
+	err := syscall.Flock(s.lockFD, how)
+	if err != nil {
 		panic(err)
 	}
-	if err := syscall.Flock(s.lockQueueFD, syscall.LOCK_UN); err != nil {
+	err := syscall.Flock(s.lockQueueFD, syscall.LOCK_UN)
+	if err != nil {
 		panic(err)
 	}
 }
 
 func (s *storage) Unlock() {
-	if err := syscall.Flock(s.lockFD, syscall.LOCK_UN); err != nil {
+	err := syscall.Flock(s.lockFD, syscall.LOCK_UN)
+	if err != nil {
 		panic(err)
 	}
 }
@@ -161,10 +166,12 @@ func (s *storage) Get() string {
 func (s *storage) Set(ver string) {
 	tmpPath := s.versionPath + ".tmp"
 	_ = os.Remove(tmpPath)
-	if err := os.Symlink(ver, tmpPath); err != nil {
+	err := os.Symlink(ver, tmpPath)
+	if err != nil {
 		panic(err)
 	}
-	if err := os.Rename(tmpPath, s.versionPath); err != nil {
+	err := os.Rename(tmpPath, s.versionPath)
+	if err != nil {
 		panic(err)
 	}
 }
