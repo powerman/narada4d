@@ -130,7 +130,7 @@ go tool cover -html={{vars.cover}} -o {{vars.cover}}.html
 [tasks.'wait:mysql']
 description = 'Wait for MySQL to become available'
 hide = true
-run = 'go run ./cmd/wait-mysql/'
+run = 'dockerize -wait "$NARADA4D_TEST_MYSQL" -timeout 60s'
 
 [tasks.cachedir]
 hide = true
