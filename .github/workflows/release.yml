@@ -29,6 +29,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
+        binary: [narada4d-init, narada4d-lock]
         include:
           - {goos: linux, goarch: amd64}
           - {goos: linux, goarch: arm64}
@@ -54,8 +55,8 @@ jobs:
           goos: ${{ matrix.goos }}
           goarch: ${{ matrix.goarch }}
           goarm: ${{ matrix.goarm }}
-          project_path: '.'
-          binary_name: ${{ github.event.repository.name }}
+          project_path: ./cmd/${{ matrix.binary }}
+          binary_name: ${{ matrix.binary }}
           pre_command: 'export CGO_ENABLED=0'
           build_flags: '-trimpath' # Reproducible build (also needs -buildid= in ldflags).
           ldflags: '-s -w -buildid='
