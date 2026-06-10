@@ -44,7 +44,7 @@ jobs:
         ports:
           - 5432:5432
         options: >-
-          --health-cmd pg_isready -U test
+          --health-cmd "pg_isready -U test"
           --health-interval 10s
           --health-start-period 15s
           --health-timeout 5s
