@@ -2,6 +2,8 @@ package goosemysql //nolint:testpackage // TestMain requires same package.
 
 import (
 	"context"
+	"fmt"
+	"os"
 	"testing"
 	"time"
 
@@ -9,7 +11,13 @@ import (
 	"github.com/powerman/gotest/testinit"
 )
 
-func TestMain(m *testing.M) { testinit.Main(m) }
+func TestMain(m *testing.M) {
+	if os.Getenv("NARADA4D_TEST_MYSQL") == "" {
+		fmt.Println("$NARADA4D_TEST_MYSQL must be set for goose-mysql integration tests (skipping)")
+		return
+	}
+	testinit.Main(m)
+}
 
 var (
 	ctx            = context.Background()

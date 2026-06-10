@@ -2,6 +2,8 @@ package goosepostgres //nolint:testpackage // TestMain requires same package.
 
 import (
 	"context"
+	"fmt"
+	"os"
 	"testing"
 	"time"
 
@@ -9,7 +11,13 @@ import (
 	"github.com/powerman/gotest/testinit"
 )
 
-func TestMain(m *testing.M) { testinit.Main(m) }
+func TestMain(m *testing.M) {
+	if os.Getenv("PGUSER") == "" {
+		fmt.Println("$PGUSER, $PGPASSWORD, $PGHOST, $PGPORT, $PGDATABASE, $PGSSLMODE must be set for PostgreSQL integration tests (skipping)")
+		return
+	}
+	testinit.Main(m)
+}
 
 var (
 	ctx            = context.Background()

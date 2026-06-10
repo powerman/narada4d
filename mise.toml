@@ -99,6 +99,7 @@ run = 'GOOS=windows go test -c -o /dev/null ./...'
 
 [tasks.'test:go']
 description = 'Run Go tests for a whole project'
+depends = ['wait:mysql']
 wait_for = ['lint:*']                            # Avoid interleaved output with linters.
 run = 'gotestsum -- -race -timeout=60s ./...'
 
@@ -124,6 +125,11 @@ gotestsum -- \
     ./...
 go tool cover -html={{vars.cover}} -o {{vars.cover}}.html
 '''
+
+[tasks.'wait:mysql']
+description = 'Wait for MySQL to become available'
+hide = true
+run = 'go run ./cmd/wait-mysql/'
 
 [tasks.cachedir]
 hide = true
