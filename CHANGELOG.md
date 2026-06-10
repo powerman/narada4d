@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.8.1] - 2026-06-10
+
+### 🐛 Fixed
+
+- **(release)** Build both binaries for all platforms by @powerman in [29d7805]
+
+### 📚 Documentation
+
+- Note that file protocol is not supported on Windows by @powerman in [06e9cc9]
+
+[1.8.1]: https://github.com/powerman/narada4d/compare/v1.8.0..v1.8.1
+[06e9cc9]: https://github.com/powerman/narada4d/commit/06e9cc97660ccde6f8dd5924229c349b6517ec64
+[29d7805]: https://github.com/powerman/narada4d/commit/29d7805abfecd9d8dc8e4225c039a8a3522fb64f
+
 ## [1.8.0] - 2026-06-10
 
 ### 🔔 Changed
