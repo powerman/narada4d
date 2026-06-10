@@ -7,17 +7,12 @@ import (
 	"os"
 	"sync"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/powerman/check"
-	"github.com/powerman/getenv"
 
 	"github.com/powerman/narada4d/schemaver"
-)
-
-var (
-	testTimeFactor = getenv.Float("GO_TEST_TIME_FACTOR", 1.0)
-	testSecond     = time.Duration(float64(time.Second) * testTimeFactor)
 )
 
 func init() {
@@ -262,48 +257,52 @@ func TestRecursiveLocks(tt *testing.T) {
 }
 
 func TestHoldSharedLock(tt *testing.T) {
-	t := check.T(tt)
-	reset()
+	synctest.Test(tt, func(tt *testing.T) {
+		t := check.T(tt)
+		reset()
 
-	tt.Setenv(schemaver.EnvLocation, "test://")
-	v, err := schemaver.New()
-	t.Nil(err)
+		tt.Setenv(schemaver.EnvLocation, "test://")
+		v, err := schemaver.New()
+		t.Nil(err)
 
-	ctx, cancel := context.WithCancel(context.Background())
-	v.HoldSharedLock(ctx, testSecond/10)
-	time.Sleep(testSecond / 2)
-	mu.Lock()
-	t.Between(sh, 3, 7)
-	mu.Unlock()
-	cancel()
-	time.Sleep(testSecond / 2)
-	mu.Lock()
-	t.Between(sh, 3, 7)
-	mu.Unlock()
-	t.Nil(v.Close())
+		ctx, cancel := context.WithCancel(tt.Context())
+		v.HoldSharedLock(ctx, time.Second/10)
+		time.Sleep(time.Second / 2)
+		mu.Lock()
+		t.Between(sh, 4, 7)
+		mu.Unlock()
+		cancel()
+		time.Sleep(time.Second / 2)
+		mu.Lock()
+		t.Equal(sh, 6)
+		mu.Unlock()
+		t.Nil(v.Close())
+	})
 }
 
 func TestHoldSharedLock2(tt *testing.T) {
-	t := check.T(tt)
-	reset()
+	synctest.Test(tt, func(tt *testing.T) {
+		t := check.T(tt)
+		reset()
 
-	tt.Setenv(schemaver.EnvLocation, "test://")
-	v, err := schemaver.New()
-	t.Nil(err)
+		tt.Setenv(schemaver.EnvLocation, "test://")
+		v, err := schemaver.New()
+		t.Nil(err)
 
-	ctx, cancel := context.WithCancel(context.Background())
-	v.HoldSharedLock(ctx, testSecond/10)
-	v.HoldSharedLock(context.Background(), testSecond/10)
-	time.Sleep(testSecond / 2)
-	mu.Lock()
-	t.BetweenOrEqual(sh, 0, 8)
-	mu.Unlock()
-	cancel()
-	time.Sleep(testSecond / 2)
-	mu.Lock()
-	t.BetweenOrEqual(sh, 5, 13)
-	mu.Unlock()
-	t.Nil(v.Close())
+		ctx, cancel := context.WithCancel(tt.Context())
+		v.HoldSharedLock(ctx, time.Second/10)
+		v.HoldSharedLock(context.Background(), time.Second/10)
+		time.Sleep(time.Second / 2)
+		mu.Lock()
+		t.Equal(sh, 1)
+		mu.Unlock()
+		cancel()
+		time.Sleep(time.Second / 2)
+		mu.Lock()
+		t.Between(sh, 4, 8)
+		mu.Unlock()
+		t.Nil(v.Close())
+	})
 }
 
 func TestAddCallback(tt *testing.T) {
