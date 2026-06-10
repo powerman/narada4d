@@ -1,4 +1,9 @@
 // Package file registers schemaver.Backend implemented using lock-files.
+//
+// It is not available on Windows.
+//
+//go:build !windows
+
 package file
 
 import (
