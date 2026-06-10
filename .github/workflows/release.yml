@@ -30,33 +30,23 @@ jobs:
     strategy:
       matrix:
         include:
-          - {binary: narada4d-init, goos: linux, goarch: amd64}
-          - {binary: narada4d-lock, goos: linux, goarch: amd64}
-          - {binary: narada4d-init, goos: linux, goarch: arm64}
-          - {binary: narada4d-lock, goos: linux, goarch: arm64}
-          - {binary: narada4d-init, goos: linux, goarch: arm, goarm: 7}
-          - {binary: narada4d-lock, goos: linux, goarch: arm, goarm: 7}
-          - {binary: narada4d-init, goos: linux, goarch: ppc64le}
-          - {binary: narada4d-lock, goos: linux, goarch: ppc64le}
-          - {binary: narada4d-init, goos: linux, goarch: s390x}
-          - {binary: narada4d-lock, goos: linux, goarch: s390x}
-          - {binary: narada4d-init, goos: linux, goarch: riscv64}
-          - {binary: narada4d-lock, goos: linux, goarch: riscv64}
-          - {binary: narada4d-init, goos: darwin, goarch: amd64}
-          - {binary: narada4d-lock, goos: darwin, goarch: amd64}
-          - {binary: narada4d-init, goos: darwin, goarch: arm64}
-          - {binary: narada4d-lock, goos: darwin, goarch: arm64}
-          - {binary: narada4d-init, goos: windows, goarch: amd64}
-          - {binary: narada4d-lock, goos: windows, goarch: amd64}
-          - {binary: narada4d-init, goos: windows, goarch: arm64}
-          - {binary: narada4d-lock, goos: windows, goarch: arm64}
+          - {goos: linux, goarch: amd64}
+          - {goos: linux, goarch: arm64}
+          - {goos: linux, goarch: arm, goarm: 7}
+          - {goos: linux, goarch: ppc64le}
+          - {goos: linux, goarch: s390x}
+          - {goos: linux, goarch: riscv64}
+          - {goos: darwin, goarch: amd64}
+          - {goos: darwin, goarch: arm64}
+          - {goos: windows, goarch: amd64}
+          - {goos: windows, goarch: arm64}
     steps:
       - uses: actions/checkout@v6
         with:
           token: ${{ env.GITHUB_TOKEN }}
           ref: ${{ needs.release-pr.outputs.version }}
 
-      - name: Build binary
+      - name: Build and package binaries
         id: build
         uses: wangyoucao577/go-release-action@v1.55
         with:
@@ -64,30 +54,30 @@ jobs:
           goos: ${{ matrix.goos }}
           goarch: ${{ matrix.goarch }}
           goarm: ${{ matrix.goarm }}
-          project_path: ./cmd/${{ matrix.binary }}
-          binary_name: ${{ matrix.binary }}
+          project_path: ./cmd/narada4d-init ./cmd/narada4d-lock
           pre_command: 'export CGO_ENABLED=0'
           build_flags: '-trimpath' # Reproducible build (also needs -buildid= in ldflags).
           ldflags: '-s -w -buildid='
-          executable_compression: >-
-            ${{ (
-              !(matrix.goos == 'windows' && matrix.goarch == 'arm64') &&
-              !(matrix.goos == 'linux'   && matrix.goarch == 's390x') &&
-              !(matrix.goos == 'linux'   && matrix.goarch == 'riscv64') &&
-              !(matrix.goos == 'darwin')
-            ) && 'upx' || '' }}
           md5sum: false
-          compress_assets: 'OFF'
+          compress_assets: 'TAR'
           release_tag: ${{ needs.release-pr.outputs.version }}
           overwrite: true
           upload: false
+          multi_binaries: true
 
-      - name: 'Fix after go-release-action: asset dir is owned by root and has no-arch binary'
+      # go-release-action with multi_binaries puts tar.gz outside asset dir
+      # and leaves raw binaries inside — clean up before signing and upload.
+      - name: Clean up asset dir
         env:
           ASSET_DIR: ${{ steps.build.outputs.release_asset_dir }}
         run: |
+          set -x
+          ls -al
+          ls -al "$ASSET_DIR" || true
           sudo chown -R "$(id -u)" "$ASSET_DIR"
-          rm -f "$ASSET_DIR/$(basename "$PWD")"{,.exe}
+          ls -al "$ASSET_DIR" || true
+          rm -f "$ASSET_DIR"/*
+          mv ./*.tar.gz "$ASSET_DIR"/
 
       - name: Install cosign
         uses: sigstore/cosign-installer@v3
