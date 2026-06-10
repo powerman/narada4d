@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.8.3] - 2026-06-10
+
+### 🐛 Fixed
+
+- **(mise)** Add dockerize by @powerman in [a979dd8]
+- Make goose-postgres & goose-mysql locks immune to caller timeouts by @powerman in [ddacd53]
+
+[1.8.3]: https://github.com/powerman/narada4d/compare/v1.8.2..v1.8.3
+[ddacd53]: https://github.com/powerman/narada4d/commit/ddacd53d4751bca1ebd2c7bb90bdd3778df1ff37
+[a979dd8]: https://github.com/powerman/narada4d/commit/a979dd897cd1962064a9195b3cb011166636c323
+
 ## [1.8.2] - 2026-06-10
 
 [1.8.2]: https://github.com/powerman/narada4d/compare/v1.8.1..v1.8.2
