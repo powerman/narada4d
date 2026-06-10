@@ -4,6 +4,8 @@ lockfile = true # DO NOT FORGET TO `touch mise.lock` if mise.lock does not exist
 
 [tools]
 go = 'latest'
+# Utility to simplify running applications in docker containers.
+"github:powerman/dockerize" = "latest"
 
 #--- Format
 # Opinionated Code Formatter.

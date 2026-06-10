@@ -110,6 +110,45 @@ url = "https://github.com/orhun/git-cliff/releases/download/v2.13.1/git-cliff-2.
 checksum = "sha256:3ae3a5549e85c7ad5b20192ebcfee4371269deca51255f6f2f2e051c6541f5ca"
 url = "https://github.com/orhun/git-cliff/releases/download/v2.13.1/git-cliff-2.13.1-x86_64-pc-windows-msvc.zip"
 
+[[tools."github:powerman/dockerize"]]
+version = "0.25.0"
+backend = "github:powerman/dockerize"
+
+[tools."github:powerman/dockerize"."platforms.linux-arm64"]
+checksum = "sha256:79da4717c889263b82b0de7989fe6ef9ea2a0615dee5ee305a7fb86d4f64d981"
+url = "https://github.com/powerman/dockerize/releases/download/v0.25.0/dockerize-v0.25.0-linux-arm64"
+url_api = "https://api.github.com/repos/powerman/dockerize/releases/assets/443867089"
+
+[tools."github:powerman/dockerize"."platforms.linux-arm64-musl"]
+checksum = "sha256:79da4717c889263b82b0de7989fe6ef9ea2a0615dee5ee305a7fb86d4f64d981"
+url = "https://github.com/powerman/dockerize/releases/download/v0.25.0/dockerize-v0.25.0-linux-arm64"
+url_api = "https://api.github.com/repos/powerman/dockerize/releases/assets/443867089"
+
+[tools."github:powerman/dockerize"."platforms.linux-x64"]
+checksum = "sha256:95a50866588199948a7d2fc6383e03c23dd412ae3f1a73f752963b5f5a9735a5"
+url = "https://github.com/powerman/dockerize/releases/download/v0.25.0/dockerize-v0.25.0-linux-amd64"
+url_api = "https://api.github.com/repos/powerman/dockerize/releases/assets/443866866"
+
+[tools."github:powerman/dockerize"."platforms.linux-x64-musl"]
+checksum = "sha256:95a50866588199948a7d2fc6383e03c23dd412ae3f1a73f752963b5f5a9735a5"
+url = "https://github.com/powerman/dockerize/releases/download/v0.25.0/dockerize-v0.25.0-linux-amd64"
+url_api = "https://api.github.com/repos/powerman/dockerize/releases/assets/443866866"
+
+[tools."github:powerman/dockerize"."platforms.macos-arm64"]
+checksum = "sha256:c1cef5d93a89c29a37ea6cf8d54d894159e560be16b1e2d93b77e248dd309a68"
+url = "https://github.com/powerman/dockerize/releases/download/v0.25.0/dockerize-v0.25.0-darwin-arm64"
+url_api = "https://api.github.com/repos/powerman/dockerize/releases/assets/443866841"
+
+[tools."github:powerman/dockerize"."platforms.macos-x64"]
+checksum = "sha256:2bee14cbf056de73c73db4658d3a1a09b80059db0b262bf7214197a19f2164f9"
+url = "https://github.com/powerman/dockerize/releases/download/v0.25.0/dockerize-v0.25.0-darwin-amd64"
+url_api = "https://api.github.com/repos/powerman/dockerize/releases/assets/443866883"
+
+[tools."github:powerman/dockerize"."platforms.windows-x64"]
+checksum = "sha256:d6a303dc85bbd9d39d019c8a9cd19dadfdb5a5ffdfa485877aa3e78985176eb7"
+url = "https://github.com/powerman/dockerize/releases/download/v0.25.0/dockerize-v0.25.0-windows-amd64.exe"
+url_api = "https://api.github.com/repos/powerman/dockerize/releases/assets/443866919"
+
 [[tools.go]]
 version = "1.26.4"
 backend = "core:go"
