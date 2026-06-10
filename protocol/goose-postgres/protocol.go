@@ -112,10 +112,25 @@ func (s *storage) SharedLock() {
 	op := func() (err error) {
 		s.tx, err = s.db.BeginTx(context.Background(), nil)
 		if err == nil {
+			_, err = s.tx.ExecContext(context.Background(), "SET LOCAL statement_timeout = 0")
+		}
+		if err == nil {
+			_, err = s.tx.ExecContext(context.Background(), "SET LOCAL lock_timeout = 0")
+		}
+		if err == nil {
+			_, err = s.tx.ExecContext(context.Background(), "SET LOCAL idle_in_transaction_session_timeout = 0")
+		}
+		if err == nil {
 			_, err = s.tx.ExecContext(context.Background(), sqlSharedLock)
 		}
-		if errors.As(err, new(*pq.Error)) { // Retry on network errors.
-			err = backoff.Permanent(err)
+		if err != nil {
+			if s.tx != nil {
+				_ = s.tx.Rollback()
+				s.tx = nil
+			}
+			if errors.As(err, new(*pq.Error)) { // Retry on network errors.
+				err = backoff.Permanent(err)
+			}
 		}
 		return err
 	}
@@ -129,10 +144,25 @@ func (s *storage) ExclusiveLock() {
 	op := func() (err error) {
 		s.tx, err = s.db.BeginTx(context.Background(), nil)
 		if err == nil {
+			_, err = s.tx.ExecContext(context.Background(), "SET LOCAL statement_timeout = 0")
+		}
+		if err == nil {
+			_, err = s.tx.ExecContext(context.Background(), "SET LOCAL lock_timeout = 0")
+		}
+		if err == nil {
+			_, err = s.tx.ExecContext(context.Background(), "SET LOCAL idle_in_transaction_session_timeout = 0")
+		}
+		if err == nil {
 			_, err = s.tx.ExecContext(context.Background(), sqlExclusiveLock)
 		}
-		if errors.As(err, new(*pq.Error)) { // Retry on network errors.
-			err = backoff.Permanent(err)
+		if err != nil {
+			if s.tx != nil {
+				_ = s.tx.Rollback()
+				s.tx = nil
+			}
+			if errors.As(err, new(*pq.Error)) { // Retry on network errors.
+				err = backoff.Permanent(err)
+			}
 		}
 		return err
 	}

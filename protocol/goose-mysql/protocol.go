@@ -82,6 +82,9 @@ func dsn(loc *url.URL) string {
 	dsn := &url.URL{}
 	*dsn = *loc
 	dsn.Host = "tcp(" + dsn.Host + ")"
+	q := dsn.Query()
+	q.Set("lock_wait_timeout", "31536000")
+	dsn.RawQuery = q.Encode()
 	return strings.TrimPrefix(dsn.String(), "goose-mysql://")
 }
 

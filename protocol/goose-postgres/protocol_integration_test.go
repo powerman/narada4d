@@ -138,7 +138,6 @@ func TestNotInitialized(tt *testing.T) {
 	defer s.Close()
 
 	t.PanicMatch(func() { s.SharedLock() }, `does not exist`)
-	s.tx.Rollback()
 }
 
 func TestGet(tt *testing.T) {

@@ -266,6 +266,17 @@ for manual maintenance in case of "dirty" schema version).
 Exits with exit code of executed command or 127 of command was terminated
 by signal.
 
+# Connection requirements
+
+- The protocol's locks are blocking by design.
+  The backend neutralizes PostgreSQL
+  `statement_timeout`/`lock_timeout`/`idle_in_transaction_session_timeout`
+  and MySQL `lock_wait_timeout` for its lock transactions
+  (see protocol-specific sections).
+- `HoldSharedLock` must receive a context that lives as long as the lock
+  should be held: it releases the lock and stops when the context is
+  cancelled.
+
 # Test
 
 Integration tests are part of the regular test suite and require access to
