@@ -114,6 +114,8 @@ Managing data schema versions requires:
 
 ## file:///path/to/dir
 
+This protocol is not supported on Windows.
+
 - Based on flock(2).
   - _Rationale:_ More than one application needs simultaneous access to
     data (at least - main application and backup tool). Some of them may
