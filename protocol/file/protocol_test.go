@@ -5,6 +5,8 @@ package file //nolint:testpackage // Tests internal implementation.
 import (
 	"net/url"
 	"os"
+	"path/filepath"
+	"runtime"
 	"strings"
 	"syscall"
 	"testing"
@@ -43,10 +45,22 @@ func TestInitialize(tt *testing.T) {
 	// - file:///path/to/read-only/dir/
 	tempdir := tt.TempDir()
 	t.Nil(os.Chmod(tempdir, 0o555))
+
+	// QEMU user-mode emulation does not enforce file permissions,
+	// so we skip the EACCES check on affected platforms (e.g. ppc64le).
+	_, probeErr := os.OpenFile(filepath.Join(tempdir, ".probe"), os.O_CREATE|os.O_EXCL, 0o644)
+	if probeErr == nil {
+		os.Remove(filepath.Join(tempdir, ".probe"))
+	}
+
 	loc, err := url.Parse(tempdir)
 	t.Nil(err)
 
-	t.Err(initialize(loc), syscall.EACCES)
+	if probeErr != nil {
+		t.Err(initialize(loc), syscall.EACCES)
+	} else {
+		t.Log("skipping EACCES check: QEMU user-mode emulation does not enforce file permissions")
+	}
 
 	// - file:///path/to/dir/with/subdir/.lock/
 	t.Nil(os.Chmod(tempdir, 0o755))
@@ -273,7 +287,13 @@ func TestSet(tt *testing.T) {
 	tt.Cleanup(func() { cleanup(t, tempdir) })
 
 	// - Set("") panics
-	t.PanicMatch(func() { p.Set("") }, `no such file or directory`)
+	// os.Symlink("", ...) succeeds on macOS (creates a symlink
+	// with an empty target), while on Linux it returns ENOENT.
+	if runtime.GOOS != "darwin" {
+		t.PanicMatch(func() { p.Set("") }, `no such file or directory`)
+	} else {
+		t.Log("skipping Set(\"\") panic check: symlink with empty target succeeds on macOS")
+	}
 
 	cases := []struct {
 		val  string
