@@ -13,7 +13,7 @@ require (
 	github.com/powerman/gotest v0.3.0
 	github.com/powerman/must v0.1.1
 	github.com/powerman/mysqlx v0.3.3
-	github.com/powerman/pqx v0.8.0
+	github.com/powerman/pqx v0.9.0
 )
 
 require (
