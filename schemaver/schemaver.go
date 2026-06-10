@@ -176,8 +176,7 @@ func (v *SchemaVer) unsetSkipLock() {
 // This is recommended optimization in case you've to do a lot of
 // short-living SharedLock every second.
 func (v *SchemaVer) HoldSharedLock(ctx context.Context, relockEvery time.Duration) {
-	v.holdWG.Add(1)
-	go func() {
+	v.holdWG.Go(func() {
 		hold := true
 		select {
 		case <-v.holdQuit:
@@ -195,8 +194,7 @@ func (v *SchemaVer) HoldSharedLock(ctx context.Context, relockEvery time.Duratio
 			}
 			v.Unlock()
 		}
-		v.holdWG.Done()
-	}()
+	})
 }
 
 // SharedLock acquire shared lock and return current version.
