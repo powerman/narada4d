@@ -71,11 +71,7 @@ jobs:
         env:
           ASSET_DIR: ${{ steps.build.outputs.release_asset_dir }}
         run: |
-          set -x
-          ls -al
-          ls -al "$ASSET_DIR" || true
           sudo chown -R "$(id -u)" "$ASSET_DIR"
-          ls -al "$ASSET_DIR" || true
           rm -f "$ASSET_DIR"/*
           mv ./*.tar.gz "$ASSET_DIR"/
 
