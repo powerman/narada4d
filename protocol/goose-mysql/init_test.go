@@ -12,8 +12,8 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	if os.Getenv("NARADA4D_TEST_MYSQL") == "" {
-		fmt.Println("$NARADA4D_TEST_MYSQL must be set for goose-mysql integration tests (skipping)")
+	if os.Getenv("NARADA4D_INTEGRATION_TEST") == "" {
+		fmt.Println("$NARADA4D_INTEGRATION_TEST must be set for MySQL integration tests (skipping)")
 		return
 	}
 	testinit.Main(m)

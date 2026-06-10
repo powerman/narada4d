@@ -12,8 +12,8 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	if os.Getenv("PGUSER") == "" {
-		fmt.Println("$PGUSER, $PGPASSWORD, $PGHOST, $PGPORT, $PGDATABASE, $PGSSLMODE must be set for PostgreSQL integration tests (skipping)")
+	if os.Getenv("NARADA4D_INTEGRATION_TEST") == "" {
+		fmt.Println("$NARADA4D_INTEGRATION_TEST must be set for PostgreSQL integration tests (skipping)")
 		return
 	}
 	testinit.Main(m)
