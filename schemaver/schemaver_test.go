@@ -28,6 +28,7 @@ func init() {
 }
 
 func TestRegisterProtocol(tt *testing.T) {
+	tt.Parallel()
 	t := check.T(tt)
 
 	// - register already registered protocol, panic
@@ -53,19 +54,19 @@ func TestLocation(tt *testing.T) {
 	reset()
 
 	// - test://localhost/, error
-	os.Setenv(schemaver.EnvLocation, "test://localhost/")
+	tt.Setenv(schemaver.EnvLocation, "test://localhost/")
 	t.Err(schemaver.Initialize(), errBadLocation)
 	_, err := schemaver.New()
 	t.Err(err, errBadLocation)
 
 	// - test://, success
-	os.Setenv(schemaver.EnvLocation, "test://")
+	tt.Setenv(schemaver.EnvLocation, "test://")
 	t.Equal(schemaver.Initialize(), nil)
 	_, err = schemaver.New()
 	t.Nil(err)
 
 	// - case registered[loc.Scheme] = nil, error
-	os.Setenv(schemaver.EnvLocation, "new://")
+	tt.Setenv(schemaver.EnvLocation, "new://")
 	t.Match(schemaver.Initialize(), `unknown protocol: "new"`)
 	_, err = schemaver.New()
 	t.Match(err, `unknown protocol: "new"`)
@@ -76,11 +77,11 @@ func TestInitialize(tt *testing.T) {
 	reset()
 
 	// - test:///ready, error
-	os.Setenv(schemaver.EnvLocation, "test:///ready")
+	tt.Setenv(schemaver.EnvLocation, "test:///ready")
 	t.Err(schemaver.Initialize(), errInitialized)
 
 	// - test:///empty, success
-	os.Setenv(schemaver.EnvLocation, "test:///empty")
+	tt.Setenv(schemaver.EnvLocation, "test:///empty")
 	t.Err(schemaver.Initialize(), nil)
 }
 
@@ -89,19 +90,19 @@ func TestNew(tt *testing.T) {
 	reset()
 
 	// - test:///invalid, error
-	os.Setenv(schemaver.EnvLocation, "test:///invalid")
+	tt.Setenv(schemaver.EnvLocation, "test:///invalid")
 	_, err := schemaver.New()
 	t.Err(err, errInvalid)
 
 	// - test:///ready, success
-	os.Setenv(schemaver.EnvLocation, "test:///ready")
+	tt.Setenv(schemaver.EnvLocation, "test:///ready")
 	_, err = schemaver.New()
 	t.Nil(err)
 }
 
 // - SH/EX (with backend, return version), UN (with backend).
 // - NARADA_SKIP_LOCK=1, SH/EX (no backend, return version), UN (no backend).
-func TestShExLock(tt *testing.T) {
+func TestShExLock(tt *testing.T) { //nolint:paralleltest // Uses global state.
 	t := check.T(tt)
 	reset()
 
@@ -118,7 +119,7 @@ func TestShExLock(tt *testing.T) {
 
 	for _, c := range cases {
 		if c.setEnv {
-			os.Setenv(schemaver.EnvSkipLock, c.envValue)
+			tt.Setenv(schemaver.EnvSkipLock, c.envValue)
 		} else {
 			os.Unsetenv(schemaver.EnvSkipLock)
 		}
@@ -149,7 +150,7 @@ func TestUnlock(tt *testing.T) {
 	t := check.T(tt)
 	reset()
 
-	os.Setenv(schemaver.EnvLocation, "test://")
+	tt.Setenv(schemaver.EnvLocation, "test://")
 	v, err := schemaver.New()
 	t.Nil(err)
 
@@ -171,7 +172,7 @@ func TestGet(tt *testing.T) {
 	t := check.T(tt)
 	reset()
 
-	os.Setenv(schemaver.EnvLocation, "test://")
+	tt.Setenv(schemaver.EnvLocation, "test://")
 	v, err := schemaver.New()
 	t.Nil(err)
 
@@ -193,7 +194,7 @@ func TestSet(tt *testing.T) {
 	t := check.T(tt)
 	reset()
 
-	os.Setenv(schemaver.EnvLocation, "test://")
+	tt.Setenv(schemaver.EnvLocation, "test://")
 	v, err := schemaver.New()
 	t.Nil(err)
 
@@ -215,7 +216,7 @@ func TestRecursiveLocks(tt *testing.T) {
 	t := check.T(tt)
 	reset()
 
-	os.Setenv(schemaver.EnvLocation, "test://")
+	tt.Setenv(schemaver.EnvLocation, "test://")
 	v, err := schemaver.New()
 	t.Nil(err)
 
@@ -264,7 +265,7 @@ func TestHoldSharedLock(tt *testing.T) {
 	t := check.T(tt)
 	reset()
 
-	os.Setenv(schemaver.EnvLocation, "test://")
+	tt.Setenv(schemaver.EnvLocation, "test://")
 	v, err := schemaver.New()
 	t.Nil(err)
 
@@ -286,7 +287,7 @@ func TestHoldSharedLock2(tt *testing.T) {
 	t := check.T(tt)
 	reset()
 
-	os.Setenv(schemaver.EnvLocation, "test://")
+	tt.Setenv(schemaver.EnvLocation, "test://")
 	v, err := schemaver.New()
 	t.Nil(err)
 
@@ -309,7 +310,7 @@ func TestAddCallback(tt *testing.T) {
 	t := check.T(tt)
 	reset()
 
-	os.Setenv(schemaver.EnvLocation, "test://")
+	tt.Setenv(schemaver.EnvLocation, "test://")
 	v, err := schemaver.New()
 	t.Nil(err)
 
@@ -342,7 +343,7 @@ func TestAddCallback(tt *testing.T) {
 				v.AddCallback(cb2)
 			}
 			if skipLock {
-				os.Setenv(schemaver.EnvSkipLock, "1")
+				tt.Setenv(schemaver.EnvSkipLock, "1")
 			} else {
 				os.Unsetenv(schemaver.EnvSkipLock)
 			}
@@ -367,7 +368,7 @@ func TestAddCallback(tt *testing.T) {
 
 	// - SH/EX, callback - panic, UN
 	reset()
-	os.Setenv(schemaver.EnvLocation, "test://")
+	tt.Setenv(schemaver.EnvLocation, "test://")
 	v, err = schemaver.New()
 	t.Nil(err)
 
@@ -418,9 +419,9 @@ func mockNew(loc *url.URL) (schemaver.Manage, error) {
 
 type mockManage struct{}
 
-func (m *mockManage) SharedLock()    { mu.Lock(); sh++; mu.Unlock() }
-func (m *mockManage) ExclusiveLock() { mu.Lock(); ex++; mu.Unlock() }
-func (m *mockManage) Unlock()        { mu.Lock(); un++; mu.Unlock() }
-func (m *mockManage) Get() string    { return ver }
-func (m *mockManage) Set(v string)   { ver = v }
-func (m *mockManage) Close() error   { return nil }
+func (*mockManage) SharedLock()    { mu.Lock(); sh++; mu.Unlock() }
+func (*mockManage) ExclusiveLock() { mu.Lock(); ex++; mu.Unlock() }
+func (*mockManage) Unlock()        { mu.Lock(); un++; mu.Unlock() }
+func (*mockManage) Get() string    { return ver }
+func (*mockManage) Set(v string)   { ver = v }
+func (*mockManage) Close() error   { return nil }

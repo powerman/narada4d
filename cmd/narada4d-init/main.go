@@ -1,3 +1,4 @@
+// Command narada4d-init initializes schema version location.
 package main
 
 import (

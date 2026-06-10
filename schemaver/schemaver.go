@@ -117,11 +117,13 @@ func (v *SchemaVer) isSkipLock() bool {
 	if len(envs) == 0 {
 		return false
 	}
-	if _, err := parseLocation(envs[0]); err != nil {
+	_, err := parseLocation(envs[0])
+	if err != nil {
 		return true // For compatibility with NARADA4D_SKIP_LOCK=1 used before.
 	}
 	for i := range envs {
-		if loc, err := parseLocation(envs[i]); err == nil && loc.String() == v.loc.String() {
+		loc, err := parseLocation(envs[i])
+		if err == nil && loc.String() == v.loc.String() {
 			return true
 		}
 	}
@@ -134,7 +136,8 @@ func (v *SchemaVer) setSkipLock() {
 
 	envs := strings.Fields(os.Getenv(EnvSkipLock))
 	for i := range envs {
-		if loc, err := parseLocation(envs[i]); err == nil && loc.String() == v.loc.String() {
+		loc, err := parseLocation(envs[i])
+		if err == nil && loc.String() == v.loc.String() {
 			return
 		}
 	}
@@ -152,7 +155,8 @@ func (v *SchemaVer) unsetSkipLock() {
 
 	envs := strings.Fields(os.Getenv(EnvSkipLock))
 	for i, v0 := range slices.Backward(envs) {
-		if loc, err := parseLocation(v0); err == nil && loc.String() == v.loc.String() {
+		loc, err := parseLocation(v0)
+		if err == nil && loc.String() == v.loc.String() {
 			copy(envs[i:], envs[i+1:])
 			envs = envs[:len(envs)-1]
 		}
@@ -309,7 +313,7 @@ func (v *SchemaVer) Set(ver string) {
 // ExclusiveLock before they returns.
 //
 // Usually this function should check is current version is
-// supported by this application and call log.Fatal if not.
+// supported by this application and call [log.Fatal] if not.
 func (v *SchemaVer) AddCallback(callback func(string)) {
 	v.mu.Lock()
 	defer v.mu.Unlock()

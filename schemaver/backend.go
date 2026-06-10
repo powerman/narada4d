@@ -36,7 +36,7 @@ type Manage interface {
 	Get() string
 	// Set will be called after ExclusiveLock and must change current
 	// version.
-	Set(string)
+	Set(ver string)
 	// Close will release any resources used to manage schema version.
 	Close() error
 }

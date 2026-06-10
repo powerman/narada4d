@@ -1,15 +1,13 @@
+//go:build !windows
+
 // Package file registers schemaver.Backend implemented using lock-files.
 //
 // It is not available on Windows.
-//
-//go:build !windows
-
 package file
 
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -22,6 +20,7 @@ const (
 	versionFileName   = ".version"
 	lockFileName      = ".lock"
 	lockQueueFileName = ".lock.queue"
+	lockFilePerm      = 0o400
 )
 
 var (
@@ -40,7 +39,7 @@ type storage struct {
 	lockQueueFD   int
 }
 
-func init() {
+func init() { //nolint:gochecknoinits // Registration pattern.
 	schemaver.RegisterProtocol("file", schemaver.Backend{
 		Initialize: initialize,
 		New:        newInitializedStorage,
@@ -83,7 +82,8 @@ func newStorage(loc *url.URL) (*storage, error) {
 	}
 
 	dir := filepath.Clean(loc.Path)
-	if fi, err := os.Stat(dir); err != nil || !fi.IsDir() {
+	fi, err := os.Stat(dir)
+	if err != nil || !fi.IsDir() {
 		return nil, errLocationWrongPath
 	}
 
@@ -101,9 +101,9 @@ func (s *storage) initialized() bool {
 }
 
 func (s *storage) init() error {
-	err := ioutil.WriteFile(s.lockPath, nil, 0o444)
+	err := os.WriteFile(s.lockPath, nil, lockFilePerm)
 	if err == nil {
-		err = ioutil.WriteFile(s.lockQueuePath, nil, 0o444)
+		err = os.WriteFile(s.lockQueuePath, nil, lockFilePerm)
 	}
 	if err == nil {
 		err = os.Symlink(schemaver.NoVersion, s.versionPath)
@@ -138,11 +138,11 @@ func (s *storage) lock(how int) {
 	if err != nil {
 		panic(err)
 	}
-	err := syscall.Flock(s.lockFD, how)
+	err = syscall.Flock(s.lockFD, how)
 	if err != nil {
 		panic(err)
 	}
-	err := syscall.Flock(s.lockQueueFD, syscall.LOCK_UN)
+	err = syscall.Flock(s.lockQueueFD, syscall.LOCK_UN)
 	if err != nil {
 		panic(err)
 	}
@@ -170,7 +170,7 @@ func (s *storage) Set(ver string) {
 	if err != nil {
 		panic(err)
 	}
-	err := os.Rename(tmpPath, s.versionPath)
+	err = os.Rename(tmpPath, s.versionPath)
 	if err != nil {
 		panic(err)
 	}

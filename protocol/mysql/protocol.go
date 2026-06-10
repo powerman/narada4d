@@ -2,6 +2,7 @@
 package mysql
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"net/url"
@@ -47,7 +48,7 @@ type storage struct {
 	tx *sql.Tx
 }
 
-func init() {
+func init() { //nolint:gochecknoinits // Registration pattern.
 	schemaver.RegisterProtocol("mysql", schemaver.Backend{
 		Initialize: initialize,
 		New:        newInitializedStorage,
@@ -126,7 +127,7 @@ func newStorage(loc *url.URL) (*storage, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = db.Ping()
+	err = db.PingContext(context.Background())
 	if err != nil {
 		_ = db.Close()
 		return nil, err
@@ -137,12 +138,12 @@ func newStorage(loc *url.URL) (*storage, error) {
 
 func (s *storage) initialized() bool {
 	var count int
-	_ = s.db.QueryRow(sqlInitialized).Scan(&count)
+	_ = s.db.QueryRowContext(context.Background(), sqlInitialized).Scan(&count)
 	return count > 0
 }
 
 func (s *storage) init() error {
-	_, err := s.db.Exec(sqlCreateTable)
+	_, err := s.db.ExecContext(context.Background(), sqlCreateTable)
 	return err
 }
 
@@ -151,9 +152,9 @@ func (s *storage) SharedLock() {
 		panic("already locked")
 	}
 	op := func() (err error) {
-		s.tx, err = s.db.Begin()
+		s.tx, err = s.db.BeginTx(context.Background(), nil)
 		if err == nil {
-			_, err = s.tx.Exec(sqlSharedLock)
+			_, err = s.tx.ExecContext(context.Background(), sqlSharedLock)
 		}
 		if errors.As(err, new(*mysql.MySQLError)) { // Retry on network errors.
 			err = backoff.Permanent(err)
@@ -168,9 +169,9 @@ func (s *storage) ExclusiveLock() {
 		panic("already locked")
 	}
 	op := func() (err error) {
-		s.tx, err = s.db.Begin()
+		s.tx, err = s.db.BeginTx(context.Background(), nil)
 		if err == nil {
-			_, err = s.tx.Exec(sqlExclusiveLock)
+			_, err = s.tx.ExecContext(context.Background(), sqlExclusiveLock)
 		}
 		if errors.As(err, new(*mysql.MySQLError)) { // Retry on network errors.
 			err = backoff.Permanent(err)
@@ -184,7 +185,7 @@ func (s *storage) Unlock() {
 	if s.tx == nil {
 		panic("not locked")
 	}
-	_, err := s.tx.Exec(sqlUnlock)
+	_, err := s.tx.ExecContext(context.Background(), sqlUnlock)
 	if err == nil {
 		err = s.tx.Commit()
 	}
@@ -197,7 +198,7 @@ func (s *storage) Unlock() {
 
 func (s *storage) Get() string {
 	var version string
-	err := s.tx.QueryRow(sqlGetVersion).Scan(&version)
+	err := s.tx.QueryRowContext(context.Background(), sqlGetVersion).Scan(&version)
 	must.PanicIf(err)
 	return version
 }
@@ -205,12 +206,11 @@ func (s *storage) Get() string {
 var reVersion = regexp.MustCompile(`\A(?:none|dirty|\d+(?:[.]\d+)*)\z`)
 
 func (s *storage) Set(ver string) {
-	if reVersion.MatchString(ver) {
-		_, err := s.tx.Exec(sqlSetVersion, ver)
-		must.PanicIf(err)
-	} else {
+	if !reVersion.MatchString(ver) {
 		panic("invalid version value, require 'none' or 'dirty' or one or more digits separated with single dots")
 	}
+	_, err := s.tx.ExecContext(context.Background(), sqlSetVersion, ver)
+	must.PanicIf(err)
 }
 
 func (s *storage) Close() error {

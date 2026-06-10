@@ -1,6 +1,8 @@
+// Command narada4d-lock acquires exclusive lock and runs command.
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log"
@@ -48,7 +50,7 @@ func run(args []string) (code int) {
 		}
 		args = append(args, shell)
 	}
-	cmd := exec.Command(args[0], args[1:]...) //nolint:gosec // By design.
+	cmd := exec.CommandContext(context.Background(), args[0], args[1:]...) //nolint:gosec // By design.
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr

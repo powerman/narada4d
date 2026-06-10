@@ -2,6 +2,7 @@
 package goosepostgres
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"net/url"
@@ -11,7 +12,7 @@ import (
 	"github.com/lib/pq"
 	"github.com/powerman/goose"
 	"github.com/powerman/must"
-	_ "github.com/powerman/pqx"
+	_ "github.com/powerman/pqx" // Registers pqx driver.
 
 	"github.com/powerman/narada4d/internal"
 	"github.com/powerman/narada4d/schemaver"
@@ -34,7 +35,7 @@ type storage struct {
 	goose *goose.Instance
 }
 
-func init() {
+func init() { //nolint:gochecknoinits // Registration pattern.
 	schemaver.RegisterProtocol("goose-postgres", schemaver.Backend{
 		Initialize: initialize,
 		New:        newInitializedStorage,
@@ -75,7 +76,7 @@ func newStorage(loc *url.URL) (*storage, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = db.Ping()
+	err = db.PingContext(context.Background())
 	if err != nil {
 		_ = db.Close()
 		return nil, err
@@ -95,7 +96,7 @@ func newStorage(loc *url.URL) (*storage, error) {
 
 func (s *storage) initialized() bool {
 	var count int
-	_ = s.db.QueryRow(sqlInitialized).Scan(&count)
+	_ = s.db.QueryRowContext(context.Background(), sqlInitialized).Scan(&count)
 	return count > 0
 }
 
@@ -109,9 +110,9 @@ func (s *storage) SharedLock() {
 		panic("already locked")
 	}
 	op := func() (err error) {
-		s.tx, err = s.db.Begin()
+		s.tx, err = s.db.BeginTx(context.Background(), nil)
 		if err == nil {
-			_, err = s.tx.Exec(sqlSharedLock)
+			_, err = s.tx.ExecContext(context.Background(), sqlSharedLock)
 		}
 		if errors.As(err, new(*pq.Error)) { // Retry on network errors.
 			err = backoff.Permanent(err)
@@ -126,9 +127,9 @@ func (s *storage) ExclusiveLock() {
 		panic("already locked")
 	}
 	op := func() (err error) {
-		s.tx, err = s.db.Begin()
+		s.tx, err = s.db.BeginTx(context.Background(), nil)
 		if err == nil {
-			_, err = s.tx.Exec(sqlExclusiveLock)
+			_, err = s.tx.ExecContext(context.Background(), sqlExclusiveLock)
 		}
 		if errors.As(err, new(*pq.Error)) { // Retry on network errors.
 			err = backoff.Permanent(err)
@@ -159,7 +160,7 @@ func (s *storage) Get() string {
 	return strconv.Itoa(int(v))
 }
 
-func (s *storage) Set(string) {
+func (*storage) Set(string) {
 	panic("not supported")
 }
 

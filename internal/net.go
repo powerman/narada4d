@@ -38,11 +38,11 @@ func WaitTCPPortClosed(ctx Ctx, addr fmt.Stringer) error {
 	op := func() error {
 		var dialer net.Dialer
 		conn, err := dialer.DialContext(ctx, "tcp", addr.String())
-		if err != nil {
-			return nil
+		if err == nil {
+			conn.Close() //nolint:errcheck // Best-effort close.
+			return fmt.Errorf("%w: %s", errTCPPortOpen, addr)
 		}
-		_ = conn.Close()
-		return fmt.Errorf("%w: %s", errTCPPortOpen, addr)
+		return nil
 	}
 	return backoff.Retry(op, backOff)
 }
