@@ -66,7 +66,7 @@ func setupIntegration() {
 	loc.Path = "/" + dbCfg.DBName
 }
 
-func dropTable(t *check.C) {
+func dropTable(t *check.TB) {
 	t.Helper()
 	s, err := newStorage(loc)
 	t.Nil(err)

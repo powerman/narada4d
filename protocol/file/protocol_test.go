@@ -17,7 +17,7 @@ import (
 
 func TestBadLocation(tt *testing.T) {
 	tt.Parallel()
-	t := check.T(tt)
+	t := check.Must(tt)
 
 	cases := []struct {
 		path    string
@@ -40,7 +40,7 @@ func TestBadLocation(tt *testing.T) {
 
 func TestInitialize(tt *testing.T) {
 	tt.Parallel()
-	t := check.T(tt)
+	t := check.Must(tt)
 
 	// - file:///path/to/read-only/dir/
 	tempdir := tt.TempDir()
@@ -97,7 +97,7 @@ func TestInitialize(tt *testing.T) {
 
 func TestNew(tt *testing.T) {
 	tt.Parallel()
-	t := check.T(tt)
+	t := check.Must(tt)
 
 	// - file:///path/to/empty/dir/
 	tempdir := tt.TempDir()
@@ -144,7 +144,7 @@ func testLock(name string, loc *urlpkg.URL, unlockc chan struct{}, statusc chan 
 // - EX1, UN1, EX2, UN2.
 func TestExSequence(tt *testing.T) {
 	tt.Parallel()
-	t := check.T(tt)
+	t := check.Must(tt)
 
 	tempdir := tt.TempDir()
 	loc, err := urlpkg.Parse("file://" + tempdir)
@@ -166,7 +166,7 @@ func TestExSequence(tt *testing.T) {
 // - EX1, EX2 (block), UN1, (unblock EX2), UN2.
 func TestExParallel(tt *testing.T) {
 	tt.Parallel()
-	t := check.T(tt)
+	t := check.Must(tt)
 
 	tempdir := tt.TempDir()
 	loc, err := urlpkg.Parse("file://" + tempdir)
@@ -189,7 +189,7 @@ func TestExParallel(tt *testing.T) {
 // - EX1, SH2 (block), UN1, (unblock SH2), UN2.
 func TestExShParallel(tt *testing.T) {
 	tt.Parallel()
-	t := check.T(tt)
+	t := check.Must(tt)
 
 	tempdir := tt.TempDir()
 	loc, err := urlpkg.Parse("file://" + tempdir)
@@ -212,7 +212,7 @@ func TestExShParallel(tt *testing.T) {
 // - SH1, SH2, UN1, UN2.
 func TestShParallel(tt *testing.T) {
 	tt.Parallel()
-	t := check.T(tt)
+	t := check.Must(tt)
 
 	tempdir := tt.TempDir()
 	loc, err := urlpkg.Parse("file://" + tempdir)
@@ -234,7 +234,7 @@ func TestShParallel(tt *testing.T) {
 // - SH1, EX2 (block), SH3 (block), UN1, (unblock EX2), UN2, (unblock SH3), UN3.
 func TestExPriority(tt *testing.T) {
 	tt.Parallel()
-	t := check.T(tt)
+	t := check.Must(tt)
 
 	tempdir := tt.TempDir()
 	loc, err := urlpkg.Parse("file://" + tempdir)
@@ -262,7 +262,7 @@ func TestExPriority(tt *testing.T) {
 // - Get = "none", Get = "none".
 func TestGetNone(tt *testing.T) {
 	tt.Parallel()
-	t := check.T(tt)
+	t := check.Must(tt)
 
 	tempdir := tt.TempDir()
 	loc, err := urlpkg.Parse("file://" + tempdir)
@@ -277,7 +277,7 @@ func TestGetNone(tt *testing.T) {
 
 func TestSet(tt *testing.T) {
 	tt.Parallel()
-	t := check.T(tt)
+	t := check.Must(tt)
 
 	tempdir := tt.TempDir()
 	loc, err := urlpkg.Parse("file://" + tempdir)
@@ -311,7 +311,7 @@ func TestSet(tt *testing.T) {
 	}
 }
 
-func cleanup(t *check.C, tempdir string) {
+func cleanup(t *check.TB, tempdir string) {
 	t.Nil(os.Remove(tempdir + "/.lock"))
 	t.Nil(os.Remove(tempdir + "/.lock.queue"))
 	t.Nil(os.Remove(tempdir + "/.version"))

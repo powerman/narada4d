@@ -24,7 +24,7 @@ func init() {
 
 func TestRegisterProtocol(tt *testing.T) {
 	tt.Parallel()
-	t := check.T(tt)
+	t := check.Must(tt)
 
 	// - register already registered protocol, panic
 	t.PanicMatch(func() {
@@ -45,7 +45,7 @@ func TestRegisterProtocol(tt *testing.T) {
 }
 
 func TestLocation(tt *testing.T) {
-	t := check.T(tt)
+	t := check.Must(tt)
 	reset()
 
 	// - test://localhost/, error
@@ -68,7 +68,7 @@ func TestLocation(tt *testing.T) {
 }
 
 func TestInitialize(tt *testing.T) {
-	t := check.T(tt)
+	t := check.Must(tt)
 	reset()
 
 	// - test:///ready, error
@@ -81,7 +81,7 @@ func TestInitialize(tt *testing.T) {
 }
 
 func TestNew(tt *testing.T) {
-	t := check.T(tt)
+	t := check.Must(tt)
 	reset()
 
 	// - test:///invalid, error
@@ -98,7 +98,7 @@ func TestNew(tt *testing.T) {
 // - SH/EX (with backend, return version), UN (with backend).
 // - NARADA_SKIP_LOCK=1, SH/EX (no backend, return version), UN (no backend).
 func TestShExLock(tt *testing.T) { //nolint:paralleltest // Uses global state.
-	t := check.T(tt)
+	t := check.Must(tt)
 	reset()
 
 	cases := []struct {
@@ -142,7 +142,7 @@ func TestShExLock(tt *testing.T) { //nolint:paralleltest // Uses global state.
 }
 
 func TestUnlock(tt *testing.T) {
-	t := check.T(tt)
+	t := check.Must(tt)
 	reset()
 
 	tt.Setenv(schemaver.EnvLocation, "test://")
@@ -164,7 +164,7 @@ func TestUnlock(tt *testing.T) {
 }
 
 func TestGet(tt *testing.T) {
-	t := check.T(tt)
+	t := check.Must(tt)
 	reset()
 
 	tt.Setenv(schemaver.EnvLocation, "test://")
@@ -186,7 +186,7 @@ func TestGet(tt *testing.T) {
 }
 
 func TestSet(tt *testing.T) {
-	t := check.T(tt)
+	t := check.Must(tt)
 	reset()
 
 	tt.Setenv(schemaver.EnvLocation, "test://")
@@ -208,7 +208,7 @@ func TestSet(tt *testing.T) {
 }
 
 func TestRecursiveLocks(tt *testing.T) {
-	t := check.T(tt)
+	t := check.Must(tt)
 	reset()
 
 	tt.Setenv(schemaver.EnvLocation, "test://")
@@ -258,14 +258,14 @@ func TestRecursiveLocks(tt *testing.T) {
 
 func TestHoldSharedLock(tt *testing.T) {
 	synctest.Test(tt, func(tt *testing.T) {
-		t := check.T(tt)
+		t := check.Must(tt)
 		reset()
 
 		tt.Setenv(schemaver.EnvLocation, "test://")
 		v, err := schemaver.New()
 		t.Nil(err)
 
-		ctx, cancel := context.WithCancel(tt.Context())
+		ctx, cancel := context.WithCancel(t.Context())
 		v.HoldSharedLock(ctx, time.Second/10)
 		time.Sleep(time.Second / 2)
 		mu.Lock()
@@ -282,16 +282,16 @@ func TestHoldSharedLock(tt *testing.T) {
 
 func TestHoldSharedLock2(tt *testing.T) {
 	synctest.Test(tt, func(tt *testing.T) {
-		t := check.T(tt)
+		t := check.Must(tt)
 		reset()
 
 		tt.Setenv(schemaver.EnvLocation, "test://")
 		v, err := schemaver.New()
 		t.Nil(err)
 
-		ctx, cancel := context.WithCancel(tt.Context())
+		ctx, cancel := context.WithCancel(t.Context())
 		v.HoldSharedLock(ctx, time.Second/10)
-		v.HoldSharedLock(tt.Context(), time.Second/10)
+		v.HoldSharedLock(t.Context(), time.Second/10)
 		time.Sleep(time.Second / 2)
 		mu.Lock()
 		t.Equal(sh, 1)
@@ -306,7 +306,7 @@ func TestHoldSharedLock2(tt *testing.T) {
 }
 
 func TestAddCallback(tt *testing.T) {
-	t := check.T(tt)
+	t := check.Must(tt)
 	reset()
 
 	tt.Setenv(schemaver.EnvLocation, "test://")

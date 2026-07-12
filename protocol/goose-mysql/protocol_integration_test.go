@@ -11,13 +11,13 @@ import (
 )
 
 func TestInitialize(tt *testing.T) {
-	t := check.T(tt)
+	t := check.Must(tt)
 	t.Nil(initialize(loc))
 	dropTable(t)
 }
 
 func TestInitialized(tt *testing.T) {
-	t := check.T(tt)
+	t := check.Must(tt)
 
 	s, err := newStorage(loc)
 	t.Nil(err)
@@ -34,7 +34,7 @@ func TestInitialized(tt *testing.T) {
 
 // - EX1, UN1, EX2, UN2.
 func TestExSequence(tt *testing.T) {
-	t := check.T(tt)
+	t := check.Must(tt)
 
 	t.Nil(initialize(loc))
 	defer dropTable(t)
@@ -52,7 +52,7 @@ func TestExSequence(tt *testing.T) {
 
 // - EX1, EX2(block), UN1, (unblockEX2), UN2.
 func TestExParallel(tt *testing.T) {
-	t := check.T(tt)
+	t := check.Must(tt)
 
 	t.Nil(initialize(loc))
 	defer dropTable(t)
@@ -71,7 +71,7 @@ func TestExParallel(tt *testing.T) {
 
 // - EX1, SH2(block), UN1, (unblock)SH2, UN2.
 func TestExShParallel(tt *testing.T) {
-	t := check.T(tt)
+	t := check.Must(tt)
 
 	t.Nil(initialize(loc))
 	defer dropTable(t)
@@ -90,7 +90,7 @@ func TestExShParallel(tt *testing.T) {
 
 // - SH1, SH2, UN1, UN2.
 func TestShParallel(tt *testing.T) {
-	t := check.T(tt)
+	t := check.Must(tt)
 
 	t.Nil(initialize(loc))
 	defer dropTable(t)
@@ -108,7 +108,7 @@ func TestShParallel(tt *testing.T) {
 
 // - SH1, EX2(block), SH3(block), UN1, (unblock)EX2, UN2, (unblock)SH3, UN3.
 func TestExPriority(tt *testing.T) {
-	t := check.T(tt)
+	t := check.Must(tt)
 
 	t.Nil(initialize(loc))
 	defer dropTable(t)
@@ -131,7 +131,7 @@ func TestExPriority(tt *testing.T) {
 }
 
 func TestNotInitialized(tt *testing.T) {
-	t := check.T(tt)
+	t := check.Must(tt)
 
 	s, err := newStorage(loc)
 	t.Nil(err)
@@ -142,7 +142,7 @@ func TestNotInitialized(tt *testing.T) {
 }
 
 func TestGet(tt *testing.T) {
-	t := check.T(tt)
+	t := check.Must(tt)
 
 	v, err := newInitializedStorage(loc)
 	t.Nil(err)
@@ -155,7 +155,7 @@ func TestGet(tt *testing.T) {
 }
 
 func TestSet(tt *testing.T) {
-	t := check.T(tt)
+	t := check.Must(tt)
 
 	v, err := newInitializedStorage(loc)
 	t.Nil(err)
@@ -168,7 +168,7 @@ func TestSet(tt *testing.T) {
 }
 
 func TestReconnect(tt *testing.T) {
-	t := check.T(tt)
+	t := check.Must(tt)
 
 	v, err := newInitializedStorage(loc)
 	t.Nil(err)

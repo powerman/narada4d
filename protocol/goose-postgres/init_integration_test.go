@@ -79,7 +79,7 @@ func setupIntegration() {
 func env2path(env string) string  { return urlpkg.PathEscape(os.Getenv(env)) }
 func env2query(env string) string { return urlpkg.QueryEscape(os.Getenv(env)) }
 
-func dropTable(t *check.C) {
+func dropTable(t *check.TB) {
 	t.Helper()
 	s, err := newStorage(loc)
 	t.Nil(err)
