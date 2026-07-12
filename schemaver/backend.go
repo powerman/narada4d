@@ -2,17 +2,17 @@ package schemaver
 
 import (
 	"fmt"
-	"net/url"
+	urlpkg "net/url"
 )
 
 // Backend used for registering backend implementing concrete protocol.
 type Backend struct {
 	// New returns implementation of SchemaVerBackend working with
 	// version at given location or error if location is incorrect.
-	New func(*url.URL) (Manage, error)
+	New func(*urlpkg.URL) (Manage, error)
 	// Initialize version at given location or return error if
 	// location is incorrect or already initialized.
-	Initialize func(*url.URL) error
+	Initialize func(*urlpkg.URL) error
 }
 
 // Manage interface must be implemented by concrete data schema

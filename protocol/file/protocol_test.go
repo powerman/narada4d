@@ -3,7 +3,7 @@
 package file //nolint:testpackage // Tests internal implementation.
 
 import (
-	"net/url"
+	urlpkg "net/url"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -30,7 +30,7 @@ func TestBadLocation(tt *testing.T) {
 	}
 
 	for _, v := range cases {
-		loc, err := url.Parse(v.path)
+		loc, err := urlpkg.Parse(v.path)
 		t.Nil(err)
 		t.Err(initialize(loc), v.wanterr, v.path)
 		_, err = newInitializedStorage(loc)
@@ -53,7 +53,7 @@ func TestInitialize(tt *testing.T) {
 		os.Remove(filepath.Join(tempdir, ".probe"))
 	}
 
-	loc, err := url.Parse(tempdir)
+	loc, err := urlpkg.Parse(tempdir)
 	t.Nil(err)
 
 	if probeErr != nil {
@@ -101,7 +101,7 @@ func TestNew(tt *testing.T) {
 
 	// - file:///path/to/empty/dir/
 	tempdir := tt.TempDir()
-	loc, err := url.Parse(tempdir)
+	loc, err := urlpkg.Parse(tempdir)
 	t.Nil(err)
 
 	// - after initialize() (success)
@@ -111,7 +111,7 @@ func TestNew(tt *testing.T) {
 	t.Nil(v.Close())
 }
 
-func testLock(name string, loc *url.URL, unlockc chan struct{}, statusc chan string) {
+func testLock(name string, loc *urlpkg.URL, unlockc chan struct{}, statusc chan string) {
 	v, err := newInitializedStorage(loc)
 	if err != nil {
 		panic(err)
@@ -147,7 +147,7 @@ func TestExSequence(tt *testing.T) {
 	t := check.T(tt)
 
 	tempdir := tt.TempDir()
-	loc, err := url.Parse("file://" + tempdir)
+	loc, err := urlpkg.Parse("file://" + tempdir)
 	t.Nil(err)
 	t.Nil(initialize(loc))
 	tt.Cleanup(func() { cleanup(t, tempdir) })
@@ -169,7 +169,7 @@ func TestExParallel(tt *testing.T) {
 	t := check.T(tt)
 
 	tempdir := tt.TempDir()
-	loc, err := url.Parse("file://" + tempdir)
+	loc, err := urlpkg.Parse("file://" + tempdir)
 	t.Nil(err)
 	t.Nil(initialize(loc))
 	tt.Cleanup(func() { cleanup(t, tempdir) })
@@ -192,7 +192,7 @@ func TestExShParallel(tt *testing.T) {
 	t := check.T(tt)
 
 	tempdir := tt.TempDir()
-	loc, err := url.Parse("file://" + tempdir)
+	loc, err := urlpkg.Parse("file://" + tempdir)
 	t.Nil(err)
 	t.Nil(initialize(loc))
 	tt.Cleanup(func() { cleanup(t, tempdir) })
@@ -215,7 +215,7 @@ func TestShParallel(tt *testing.T) {
 	t := check.T(tt)
 
 	tempdir := tt.TempDir()
-	loc, err := url.Parse("file://" + tempdir)
+	loc, err := urlpkg.Parse("file://" + tempdir)
 	t.Nil(err)
 	t.Nil(initialize(loc))
 	tt.Cleanup(func() { cleanup(t, tempdir) })
@@ -237,7 +237,7 @@ func TestExPriority(tt *testing.T) {
 	t := check.T(tt)
 
 	tempdir := tt.TempDir()
-	loc, err := url.Parse("file://" + tempdir)
+	loc, err := urlpkg.Parse("file://" + tempdir)
 	t.Nil(err)
 	t.Nil(initialize(loc))
 	tt.Cleanup(func() { cleanup(t, tempdir) })
@@ -265,7 +265,7 @@ func TestGetNone(tt *testing.T) {
 	t := check.T(tt)
 
 	tempdir := tt.TempDir()
-	loc, err := url.Parse("file://" + tempdir)
+	loc, err := urlpkg.Parse("file://" + tempdir)
 	t.Nil(err)
 	p, err := newInitializedStorage(loc)
 	t.Nil(err)
@@ -280,7 +280,7 @@ func TestSet(tt *testing.T) {
 	t := check.T(tt)
 
 	tempdir := tt.TempDir()
-	loc, err := url.Parse("file://" + tempdir)
+	loc, err := urlpkg.Parse("file://" + tempdir)
 	t.Nil(err)
 	p, err := newInitializedStorage(loc)
 	t.Nil(err)

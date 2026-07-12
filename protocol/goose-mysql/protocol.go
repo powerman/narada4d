@@ -5,7 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"net/url"
+	urlpkg "net/url"
 	"strconv"
 	"strings"
 
@@ -50,7 +50,7 @@ func init() { //nolint:gochecknoinits // Registration pattern.
 	})
 }
 
-func initialize(loc *url.URL) error {
+func initialize(loc *urlpkg.URL) error {
 	s, err := newStorage(loc)
 	if err != nil {
 		return err
@@ -63,7 +63,7 @@ func initialize(loc *url.URL) error {
 	return s.init()
 }
 
-func newInitializedStorage(loc *url.URL) (schemaver.Manage, error) {
+func newInitializedStorage(loc *urlpkg.URL) (schemaver.Manage, error) {
 	s, err := newStorage(loc)
 	if err != nil {
 		return nil, err
@@ -78,8 +78,8 @@ func newInitializedStorage(loc *url.URL) (schemaver.Manage, error) {
 	return s, nil
 }
 
-func dsn(loc *url.URL) string {
-	dsn := &url.URL{}
+func dsn(loc *urlpkg.URL) string {
+	dsn := &urlpkg.URL{}
 	*dsn = *loc
 	dsn.Host = "tcp(" + dsn.Host + ")"
 	q := dsn.Query()
@@ -88,7 +88,7 @@ func dsn(loc *url.URL) string {
 	return strings.TrimPrefix(dsn.String(), "goose-mysql://")
 }
 
-func newStorage(loc *url.URL) (*storage, error) {
+func newStorage(loc *urlpkg.URL) (*storage, error) {
 	db, err := sql.Open("mysql", dsn(loc))
 	if err != nil {
 		return nil, err

@@ -3,7 +3,7 @@ package schemaver_test
 import (
 	"context"
 	"errors"
-	"net/url"
+	urlpkg "net/url"
 	"os"
 	"sync"
 	"testing"
@@ -291,7 +291,7 @@ func TestHoldSharedLock2(tt *testing.T) {
 
 		ctx, cancel := context.WithCancel(tt.Context())
 		v.HoldSharedLock(ctx, time.Second/10)
-		v.HoldSharedLock(context.Background(), time.Second/10)
+		v.HoldSharedLock(tt.Context(), time.Second/10)
 		time.Sleep(time.Second / 2)
 		mu.Lock()
 		t.Equal(sh, 1)
@@ -396,7 +396,7 @@ func reset() {
 	ver, sh, ex, un = "42", 0, 0, 0
 }
 
-func mockInitialize(loc *url.URL) error {
+func mockInitialize(loc *urlpkg.URL) error {
 	if loc.Host != "" {
 		return errBadLocation
 	}
@@ -406,7 +406,7 @@ func mockInitialize(loc *url.URL) error {
 	return nil
 }
 
-func mockNew(loc *url.URL) (schemaver.Manage, error) {
+func mockNew(loc *urlpkg.URL) (schemaver.Manage, error) {
 	if loc.Host != "" {
 		return nil, errBadLocation
 	}

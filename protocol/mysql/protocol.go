@@ -5,7 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"net/url"
+	urlpkg "net/url"
 	"regexp"
 	"strings"
 	"time"
@@ -55,7 +55,7 @@ func init() { //nolint:gochecknoinits // Registration pattern.
 	})
 }
 
-func validate(loc *url.URL) error {
+func validate(loc *urlpkg.URL) error {
 	switch {
 	case loc.User == nil || loc.User.Username() == "":
 		return errLocationRequireUsername
@@ -70,7 +70,7 @@ func validate(loc *url.URL) error {
 	}
 }
 
-func initialize(loc *url.URL) error {
+func initialize(loc *urlpkg.URL) error {
 	s, err := newStorage(loc)
 	if err != nil {
 		return err
@@ -83,7 +83,7 @@ func initialize(loc *url.URL) error {
 	return s.init()
 }
 
-func newInitializedStorage(loc *url.URL) (schemaver.Manage, error) {
+func newInitializedStorage(loc *urlpkg.URL) (schemaver.Manage, error) {
 	s, err := newStorage(loc)
 	if err != nil {
 		return nil, err
@@ -98,7 +98,7 @@ func newInitializedStorage(loc *url.URL) (schemaver.Manage, error) {
 	return s, nil
 }
 
-func newStorage(loc *url.URL) (*storage, error) {
+func newStorage(loc *urlpkg.URL) (*storage, error) {
 	err := validate(loc)
 	if err != nil {
 		return nil, err

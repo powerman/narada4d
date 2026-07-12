@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net"
-	"net/url"
+	urlpkg "net/url"
 	"os"
 	"strings"
 	"time"
@@ -26,7 +26,7 @@ const (
 )
 
 var (
-	loc   *url.URL
+	loc   *urlpkg.URL
 	proxy *proxypkg.TCPProxy
 )
 
@@ -40,10 +40,10 @@ func setupIntegration() {
 		testinit.Fatal("$PGUSER, $PGPASSWORD, $PGHOST, $PGPORT, $PGDATABASE, $PGSSLMODE must be set for PostgreSQL integration tests")
 	}
 
-	loc, err = url.Parse(fmt.Sprintf("goose-postgres://%s:%s@%s/%s?sslmode=%s",
+	loc, err = urlpkg.Parse(fmt.Sprintf("goose-postgres://%s:%s@%s/%s?sslmode=%s",
 		env2path("PGUSER"), env2path("PGPASSWORD"),
 		net.JoinHostPort(os.Getenv("PGHOST"), os.Getenv("PGPORT")),
-		env2path("PGDATABASE")+url.PathEscape("_"+testDBSuffix),
+		env2path("PGDATABASE")+urlpkg.PathEscape("_"+testDBSuffix),
 		env2query("PGSSLMODE")))
 	if err != nil {
 		testinit.Fatal(err)
@@ -76,8 +76,8 @@ func setupIntegration() {
 	testinit.Teardown(cleanup)
 }
 
-func env2path(env string) string  { return url.PathEscape(os.Getenv(env)) }
-func env2query(env string) string { return url.QueryEscape(os.Getenv(env)) }
+func env2path(env string) string  { return urlpkg.PathEscape(os.Getenv(env)) }
+func env2query(env string) string { return urlpkg.QueryEscape(os.Getenv(env)) }
 
 func dropTable(t *check.C) {
 	t.Helper()
@@ -88,7 +88,7 @@ func dropTable(t *check.C) {
 	t.Nil(s.Close())
 }
 
-func testLock(name string, loc *url.URL, unlockc chan struct{}, statusc chan string) {
+func testLock(name string, loc *urlpkg.URL, unlockc chan struct{}, statusc chan string) {
 	v, err := newStorage(loc)
 	if err != nil {
 		panic(err)

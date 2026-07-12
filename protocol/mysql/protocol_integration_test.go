@@ -4,7 +4,7 @@ package mysql //nolint:testpackage // Integration tests use unexported internals
 import (
 	"fmt"
 	"net"
-	"net/url"
+	urlpkg "net/url"
 	"strings"
 	"testing"
 	"time"
@@ -42,7 +42,7 @@ func TestConnect(tt *testing.T) {
 	}
 
 	for _, v := range cases {
-		p, err := url.Parse(v.url)
+		p, err := urlpkg.Parse(v.url)
 		t.Nil(err)
 		s, err := newStorage(p)
 		t.Err(err, v.wanterr)
@@ -51,12 +51,12 @@ func TestConnect(tt *testing.T) {
 		}
 	}
 
-	p, err := url.Parse(fmt.Sprintf("mysql://incUserName:%s@%s/%s", dbPass, hostPort, dbName))
+	p, err := urlpkg.Parse(fmt.Sprintf("mysql://incUserName:%s@%s/%s", dbPass, hostPort, dbName))
 	t.Nil(err)
 	_, err = newStorage(p)
 	t.Match(err, `Access denied`)
 
-	p, err = url.Parse(fmt.Sprintf("mysql://%s:incPass@%s/%s", dbUser, hostPort, dbName))
+	p, err = urlpkg.Parse(fmt.Sprintf("mysql://%s:incPass@%s/%s", dbUser, hostPort, dbName))
 	t.Nil(err)
 	_, err = newStorage(p)
 	t.Match(err, `Access denied`)

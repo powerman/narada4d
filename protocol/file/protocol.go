@@ -8,7 +8,7 @@ package file
 import (
 	"errors"
 	"fmt"
-	"net/url"
+	urlpkg "net/url"
 	"os"
 	"path/filepath"
 	"syscall"
@@ -46,7 +46,7 @@ func init() { //nolint:gochecknoinits // Registration pattern.
 	})
 }
 
-func initialize(loc *url.URL) error {
+func initialize(loc *urlpkg.URL) error {
 	s, err := newStorage(loc)
 	if err != nil {
 		return err
@@ -58,7 +58,7 @@ func initialize(loc *url.URL) error {
 	return s.init()
 }
 
-func newInitializedStorage(loc *url.URL) (schemaver.Manage, error) {
+func newInitializedStorage(loc *urlpkg.URL) (schemaver.Manage, error) {
 	s, err := newStorage(loc)
 	if err != nil {
 		return nil, err
@@ -76,7 +76,7 @@ func newInitializedStorage(loc *url.URL) (schemaver.Manage, error) {
 	return s, nil
 }
 
-func newStorage(loc *url.URL) (*storage, error) {
+func newStorage(loc *urlpkg.URL) (*storage, error) {
 	if loc.User != nil || loc.Host != "" || loc.RawQuery != "" || loc.Fragment != "" {
 		return nil, errLocationInvalid
 	}

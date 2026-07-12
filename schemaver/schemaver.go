@@ -5,7 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net/url"
+	urlpkg "net/url"
 	"os"
 	"slices"
 	"strings"
@@ -30,8 +30,8 @@ const (
 
 var errUnknownProtocol = errors.New("narada4d: unknown protocol")
 
-func parseLocation(location string) (*url.URL, error) {
-	loc, err := url.Parse(location)
+func parseLocation(location string) (*urlpkg.URL, error) {
+	loc, err := urlpkg.Parse(location)
 	if err != nil {
 		return nil, fmt.Errorf("narada4d: %w", err)
 	}
@@ -62,7 +62,7 @@ const (
 
 // SchemaVer manage data schema versions.
 type SchemaVer struct {
-	loc        *url.URL
+	loc        *urlpkg.URL
 	backend    Manage
 	mu         sync.Mutex
 	lockType   lockType

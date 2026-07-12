@@ -3,7 +3,7 @@ package mysql //nolint:testpackage // Integration tests use unexported internals
 import (
 	"context"
 	"log"
-	"net/url"
+	urlpkg "net/url"
 	"os"
 	"strings"
 	"time"
@@ -23,7 +23,7 @@ const (
 )
 
 var (
-	loc   *url.URL
+	loc   *urlpkg.URL
 	proxy *proxypkg.TCPProxy
 )
 
@@ -37,7 +37,7 @@ func setupIntegration() {
 		testinit.Fatal("$NARADA4D_TEST_MYSQL must be set for MySQL integration tests")
 	}
 
-	loc, err = url.Parse(os.Getenv("NARADA4D_TEST_MYSQL"))
+	loc, err = urlpkg.Parse(os.Getenv("NARADA4D_TEST_MYSQL"))
 	if err != nil {
 		testinit.Fatal("failed to parse $NARADA4D_TEST_MYSQL as URL: ", err)
 	}
@@ -65,8 +65,8 @@ func setupIntegration() {
 	loc.Path = "/" + dbCfg.DBName
 }
 
-func dsn(loc *url.URL) string {
-	dsn := &url.URL{}
+func dsn(loc *urlpkg.URL) string {
+	dsn := &urlpkg.URL{}
 	*dsn = *loc
 	dsn.Host = "tcp(" + dsn.Host + ")"
 	return strings.TrimPrefix(dsn.String(), "mysql://")
@@ -81,7 +81,7 @@ func dropTable(t *check.C) {
 	t.Nil(s.Close())
 }
 
-func testLock(name string, loc *url.URL, unlockc chan struct{}, statusc chan string) {
+func testLock(name string, loc *urlpkg.URL, unlockc chan struct{}, statusc chan string) {
 	v, err := newStorage(loc)
 	if err != nil {
 		panic(err)
