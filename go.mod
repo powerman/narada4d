@@ -4,7 +4,7 @@ go 1.25.0
 
 require (
 	github.com/cenkalti/backoff/v4 v4.3.0
-	github.com/docker/go-connections v0.7.0
+	github.com/docker/go-connections v0.8.1
 	github.com/go-sql-driver/mysql v1.10.0
 	github.com/lib/pq v1.12.3
 	github.com/powerman/check v1.13.0
