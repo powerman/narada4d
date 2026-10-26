@@ -67,8 +67,7 @@ func setupIntegration() {
 
 	_, cleanup, err := pqx.EnsureTempDB(logger, testDBSuffix, dbCfg)
 	if err != nil {
-		var pqErr *pq.Error
-		if errors.As(err, &pqErr) {
+		if _, ok := errors.AsType[*pq.Error](err); ok {
 			logger.Print("set environment variables to allow connection to postgresql:\nhttps://www.postgresql.org/docs/current/libpq-envars.html")
 		}
 		testinit.Fatal(err)
