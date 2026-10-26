@@ -1,6 +1,6 @@
 module github.com/powerman/narada4d
 
-go 1.25.0
+go 1.27.0
 
 require (
 	github.com/cenkalti/backoff/v4 v4.3.0
