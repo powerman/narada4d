@@ -82,7 +82,7 @@ func newStorage(loc *urlpkg.URL) (*storage, error) {
 	}
 
 	dir := filepath.Clean(loc.Path)
-	fi, err := os.Stat(dir)
+	fi, err := os.Stat(dir) //nolint:gosec // Location is trusted, any directory is allowed.
 	if err != nil || !fi.IsDir() {
 		return nil, errLocationWrongPath
 	}
