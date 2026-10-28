@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.9.0] - 2026-10-28
+
+### 🔔 Changed
+
+- Require Go 1.26 by @powerman in [1812394]
+
+### 🐛 Fixed
+
+- Build with Go 1.27.3 by @powerman in [64a03af]
+
+### 📦️ Dependencies
+
+- **(deps)** Upgrade go and golangci-lint by @powerman in [35cb817]
+- **(deps)** Upgrade go modules by @powerman in [c5a7873]
+- **(deps)** Upgrade go and golangci-lint by @powerman in [aee79bd]
+- **(deps)** Mise up by @powerman in [8d3fe9f]
+
+[1.9.0]: https://github.com/powerman/narada4d/compare/v1.8.5..v1.9.0
+[35cb817]: https://github.com/powerman/narada4d/commit/35cb817ebe95923c49334f1f9ed3b1b0035eab48
+[c5a7873]: https://github.com/powerman/narada4d/commit/c5a7873a73f64a8a50394bbbcd785f42fac27fcc
+[aee79bd]: https://github.com/powerman/narada4d/commit/aee79bd723dd4e1c3772b683499ff583f824c0ab
+[64a03af]: https://github.com/powerman/narada4d/commit/64a03af8fcf65ef1705170a1014b4e42f4d61673
+[1812394]: https://github.com/powerman/narada4d/commit/181239459882a07ce384452cafdeff04e158c5f7
+[8d3fe9f]: https://github.com/powerman/narada4d/commit/8d3fe9faa4548bc398d5b949359302ff61dfd7f7
+
 ## [1.8.5] - 2026-07-12
 
 [1.8.5]: https://github.com/powerman/narada4d/compare/v1.8.4..v1.8.5
